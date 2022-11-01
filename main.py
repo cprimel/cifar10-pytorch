@@ -1,5 +1,3 @@
-# TODO: script for training model
-
 def hello_world():
     print("Hey!")
 
