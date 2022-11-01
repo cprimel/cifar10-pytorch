@@ -150,5 +150,5 @@ class ResNet(nn.Module):
         return x
 
 
-def ResNet18v():
+def ResNet18():
     return ResNet(ResBlock, [2, 2, 2, 2])
