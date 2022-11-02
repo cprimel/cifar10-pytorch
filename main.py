@@ -1,7 +1,7 @@
 from torchsummary import summary
 
-from models.resnet import ResNet18
+from models.resnet import ResNet10
 
 if __name__ == "__main__":
-    net = ResNet18()
+    net = ResNet10()
     summary(net, (3,32,32), device="cpu")

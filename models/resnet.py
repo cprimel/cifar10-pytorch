@@ -107,6 +107,11 @@ class Bottleneck(nn.Module):
 
 
 class ResNet(nn.Module):
+    """
+        TODO: Weight initialization
+        TODO: Dilation
+    """
+
     def __init__(self, block: Type[Union[ResBlock, Bottleneck]], layers: List[int], num_classes: int = 10):
         super().__init__()
         assert len(layers) == 4, f"layers requires a list of 4 integers, got {len(layers)}"
@@ -152,3 +157,7 @@ class ResNet(nn.Module):
 
 def ResNet18():
     return ResNet(ResBlock, [2, 2, 2, 2])
+
+
+def ResNet10():
+    return ResNet(ResBlock, [1, 1, 1, 1])
