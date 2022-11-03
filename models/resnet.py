@@ -5,8 +5,8 @@ import torch.nn as nn
 from torch import Tensor
 
 
-def conv3x3(in_channels: int, out_channels: int, stride: int = 1, padding: int = 1) -> nn.Conv2d:
-    return nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=padding,
+def conv3x3(in_channels: int, out_channels: int, stride: int = 1, groups: int = 1, padding: int = 1) -> nn.Conv2d:
+    return nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=padding, groups=groups,
                      bias=False)
 
 
@@ -61,21 +61,22 @@ class ResBlock(nn.Module):
 class Bottleneck(nn.Module):
     expansion: int = 4
 
-    def __init__(self, in_channels: int, out_channels: int, stride: int = 1, padding: int = 1):
+    def __init__(self, in_channels: int, out_channels: int, stride: int = 1, padding: int = 1, base_width: int = 64,
+                 groups: int = 1):
         super().__init__()
-        width = out_channels
+        width = int(out_channels * base_width / 64.0) * groups
         self.conv1 = conv1x1(in_channels, width)
         self.bn1 = nn.BatchNorm2d(width)
-        self.conv2 = conv3x3(width, width, stride, padding)
+        self.conv2 = conv3x3(width, width, stride, groups, padding)
         self.bn2 = nn.BatchNorm2d(width)
         self.conv3 = conv1x1(width, out_channels * self.expansion)
         self.bn3 = nn.BatchNorm2d(out_channels * self.expansion)
         self.relu = nn.ReLU(inplace=True)
 
-        if stride != 1:
+        if stride != 1 or in_channels != out_channels * self.expansion:
             self.downsample = nn.Sequential(
-                conv1x1(in_channels, out_channels, stride),
-                nn.BatchNorm2d(out_channels)
+                conv1x1(in_channels, out_channels * self.expansion, stride),
+                nn.BatchNorm2d(out_channels * self.expansion)
             )
         else:
             self.downsample = None
@@ -109,7 +110,7 @@ class Bottleneck(nn.Module):
 class ResNet(nn.Module):
     """
         TODO: Weight initialization
-        TODO: Dilation
+        TODO: Dilation - not necessary but might be useful for iterating over different architectures
     """
 
     def __init__(self, block: Type[Union[ResBlock, Bottleneck]], layers: List[int], num_classes: int = 10):
