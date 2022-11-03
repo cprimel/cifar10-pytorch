@@ -4,6 +4,10 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
+"""
+    See https://pytorch.org/vision/stable/_modules/torchvision/models/resnet.html.
+"""
+
 
 def conv3x3(in_channels: int, out_channels: int, stride: int = 1, groups: int = 1, padding: int = 1) -> nn.Conv2d:
     return nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=padding, groups=groups,
