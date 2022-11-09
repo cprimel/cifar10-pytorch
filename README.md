@@ -10,8 +10,9 @@ sys.path.insert(0, '/content/cautious-fiesta')
 Now, one can simply import the needed modules:
 
 ```python
-from utils.train import Trainer
-trainer = Trainer(# a bunch of args ...)
+from train import Trainer
+
+trainer = Trainer(  # a bunch of args ...)
 ```
 
 Training, testing and evaluation can also be run as stand alone scripts (TODO).

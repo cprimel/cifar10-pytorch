@@ -36,3 +36,7 @@ def ConvMixer(dim: int = 256, depth: int = 8, kernel_size: int = 5, patch_size: 
         nn.Flatten(),
         nn.Linear(dim, n_classes)
     )
+
+
+def ConvMixer256_8():
+    return ConvMixer()

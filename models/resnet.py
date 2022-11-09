@@ -24,7 +24,7 @@ class ResBlock(nn.Module):
     def __init__(self, in_channels: int, out_channels: int, stride: int = 1, groups: int = 1, base_width: int = 64,
                  padding: int = 1):
         super().__init__()
-        self.conv1 = conv3x3(in_channels, out_channels, stride)
+        self.conv1 = conv3x3(in_channels, out_channels, stride) # TODO: define directly rather than by function
         self.bn1 = nn.BatchNorm2d(num_features=out_channels)
         self.relu = nn.ReLU(inplace=True)
         self.conv2 = conv3x3(out_channels, out_channels)
@@ -105,6 +105,8 @@ class Bottleneck(nn.Module):
         """
             Inclusion of ReLU after addition in a standard ResBlock has a minor negative effect on test performance. 
 
+            TODO: Test if above is also true for Bottleneck block.
+            
             See http://torch.ch/blog/2016/02/04/resnets.html
         """
         out = self.relu(out)
@@ -147,7 +149,7 @@ class ResNet(nn.Module):
             layers.append(block(self.in_channels, out_channels, stride, base_width=self.base_width, groups=self.groups))
         return nn.Sequential(*layers)
 
-    def forward(self, x: Tensor) -> Tensor:
+    def _forward_impl(self, x: Tensor) -> Tensor:
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -163,14 +165,21 @@ class ResNet(nn.Module):
         x = self.fc(x)
         return x
 
+    def forward(self, x: Tensor) -> Tensor:
+        return self._forward_impl(x)
+
 
 def ResNet18():
     return ResNet(ResBlock, [2, 2, 2, 2])
 
 
 def ResNet10():
-    return ResNet(ResBlock, [1, 1, 1, 1])
+    return ResNet(Bottleneck, [1, 1, 1, 1])
 
 
 def ResNeXt10_32_2d():
     return ResNet(Bottleneck, [1, 1, 1, 1], groups=32, width_per_group=2)
+
+
+def ResNet26_2_32d():
+    return ResNet(Bottleneck, [1, 1, 1, 1], groups=1, width_per_group=128)
