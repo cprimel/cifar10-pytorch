@@ -1,5 +1,8 @@
 import argparse
+import json
 import logging
+import os.path
+import time
 from typing import Tuple, Callable
 
 import torch
@@ -10,7 +13,7 @@ from torch import Tensor
 
 import utils
 from models import model_registry
-from utils import create_optimizer
+from utils import create_optimizer, create_scheduler
 
 """
     See https://github.com/rwightman/pytorch-image-models/blob/main/train.py
@@ -47,16 +50,24 @@ group.add_argument('--weight-decay', type=float, default=2e-5,
 # Learning rate schedule parameters
 group = parser.add_argument_group('Learning rate schedule parameters')
 group.add_argument('--sched', type=str, default='cosine', metavar='SCHEDULER',
-                   help='LR scheduler (default: "step"')
+                   help='LR scheduler (default: "cosine")')
 group.add_argument('--lr', type=float, default=0.01, metavar='LR',
                    help='learning rate, overrides lr-base if set (default: None)')
 group.add_argument('--epochs', type=int, default=50, metavar='N',
                    help='number of epochs to train (default: 50)')
 group.add_argument('--decay-rate', '--dr', type=float, default=0.1, metavar='RATE',
                    help='LR decay rate (default: 0.1)')
-
+group.add_argument('--t-initial', type=int, default=200, metavar='T_0',
+                   help='T_0 for cosine annealing (default: 200)')
+group.add_argument('--t-mult', type=int, default=1, metavar='T_M',
+                   help='T_mult for cosine annealing (default: 1)')
+group.add_argument('--plateau-mode', type=str, default='min', metavar='P_M',
+                   help='plateau mode for LR reduction on plateau (default: "min")')
+group.add_argument('--patience', type=int, default=10, metavar='PAT',
+                   help='Number of updates to wait before reducing LR (default: 10)')
 # Augmentation & regularization parameters
 group = parser.add_argument_group('Augmentation and regularization parameters')
+group.add_argument('--val-ratio', type=float, default=0.9, help='ratio for train-validation split')
 group.add_argument('--hflip', type=float, default=0.5,
                    help='Horizontal flip training aug probability')
 group.add_argument('--vflip', type=float, default=0.,
@@ -70,8 +81,10 @@ group.add_argument('--recovery-interval', type=int, default=0, metavar='N',
                    help='how many batches to wait before writing recovery checkpoint')
 group.add_argument('--checkpoint-hist', type=int, default=10, metavar='N',
                    help='number of checkpoints to keep (default: 10)')
-group.add_argument('--output', default='', type=str, metavar='PATH',
-                   help='path to output folder (default: none, current dir)')
+group.add_argument('--checkpoint-dir', default='checkpoints', type=str, metavar='PATH',
+                   help='path to checkpoints (default: checkpoints/)')
+group.add_argument('--log-dir', default='logs', type=str, metavar='PATH', help='path to training logs')
+group.add_argument('--output', default='results', type=str, metavar='PATH', help='path to output')
 group.add_argument('--experiment', default='', type=str, metavar='NAME',
                    help='name of train experiment, name of sub-folder for output')
 
@@ -97,6 +110,15 @@ def main():
     utils.setup_default_logging()
     args, args_text = _parse_args()
 
+    _logger.info(f"Preparing experiment {args.experiment}...")
+
+    ckpt_path = os.path.join(args.checkpoint_dir, args.experiment)
+    if not os.path.exists(ckpt_path):
+        os.makedirs(ckpt_path)
+    log_path = os.path.join(args.log_dir, args.experiment)
+    if not os.path.exists(log_path):
+        os.makedirs(log_path)
+
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     """
         TODO: Revise model creation to take parameters as kwargs:
@@ -108,50 +130,78 @@ def main():
 
     model = model_registry[args.model]()
     model = model.to(device)
-    _logger.info(f"{args.model} loaded to {device}.")
+
+    _logger.info(f"{args.model} created, # of params: {sum([m.numel() for m in model.parameters()]):,d}.")
     optimizer = create_optimizer(params=model.parameters(), opt_name=args.opt, lr=args.lr,
                                  weight_decay=args.weight_decay)
 
     train_loss_fn = torch.nn.CrossEntropyLoss().to(device)
     validate_loss_fn = torch.nn.CrossEntropyLoss().to(device)
 
-    # TODO: Resume from checkpoint
-
     # Create train and test datasets
     ROOT = '.data'
     train_data = torchvision.datasets.CIFAR10(ROOT,
                                               train=True,
                                               download=True)
-    test_data = torchvision.datasets.CIFAR10(ROOT,
-                                             train=False,
-                                             download=True)
-
-    # OPTIONAL: mixup / cutmix
-
-    # TODO: Create dataloaders w/augmentation pipeline
     mean = train_data.data.mean(axis=(0, 1, 2)) / 255
     std = train_data.data.std(axis=(0, 1, 2)) / 255
+    n_train = int(len(train_data) * args.val_ratio)
+    n_val = len(train_data) - n_train
+    train_data, val_data = torch.utils.data.random_split(train_data, [n_train, n_val])
+    # test_data = torchvision.datasets.CIFAR10(ROOT,
+    #                                          train=False,
+    #                                          download=True)
+    # TODO: Add optional mixup / cutmix augmentation
+
+    # Create dataloaders w/augmentation pipeline
     input_size = (3, 32, 32)
 
     train_loader = utils.create_loader(train_data, input_size=input_size, mean=mean, std=std,
                                        batch_size=args.batch_size, is_training=True)
-    test_loader = utils.create_loader(test_data, input_size=input_size, mean=mean, std=std, batch_size=args.batch_size,
-                                      is_training=False)
+    val_loader = utils.create_loader(val_data, input_size=input_size, mean=mean, std=std, batch_size=args.batch_size,
+                                     is_training=False)
 
-    # TODO: Setup checkpoint saver and metric tracking
-
-    # TODO: Setup learning rate schedule and starting epoch
+    # Resume from checkpoint
     start_epoch = 0
+    if args.resume:
+        ckpt = torch.load(args.resume)
+        model.load_state_dict(ckpt['model_state_dict'])
+        optimizer.load_state_dict(ckpt['optimizer_state_dict'])
+        start_epoch = ckpt['epoch']
 
+    # Create scheduler
+    lr_scheduler = create_scheduler(optimizer=optimizer, sched=args.sched, num_epochs=args.epochs, min_lr=args.min_lr,
+                                    T_0=args.t_initial, T_mult=args.t_mult, plateau_mode=args.plateau_mode,
+                                    patience=args.patience)
+    if lr_scheduler is not None and start_epoch > 0:
+        lr_scheduler.step(start_epoch)
+
+    metrics = {}
     try:
         for epoch in range(start_epoch, args.epochs):
-            train_metrics = train_one_epoch(epoch, model, train_loader, optimizer, train_loss_fn, args, device)
-            print(train_metrics)
+            (train_loss, train_acc) = train_one_epoch(epoch, model, train_loader, optimizer, lr_scheduler,
+                                                      train_loss_fn, args,
+                                                      device)
+            (val_loss, val_acc) = validate(model, val_loader, validate_loss_fn, args, device)
+            # TODO:
+            #  Find better solution:
+            #       val_loss and val_acc are returned as tensors--they shouldn't be!
+            metrics[epoch] = {'train_loss': train_loss, 'train_acc': train_acc, 'val_loss': val_loss.item(),
+                              'val_acc': val_acc.item()}
+            if lr_scheduler is not None:
+                lr_scheduler.step(epoch + 1, args.eval_metric)
     except KeyboardInterrupt:
         pass
 
+    # dump loss and accuracy metrics to json
+    if metrics:
+        data_dump = json.dumps(metrics)
+        f = open(os.path.join(log_path, f"{time.time()}"), "w")
+        f.write(data_dump)
+        f.close()
 
-def calculate_accuracy(y_pred: Tensor, y: Tensor):
+
+def accuracy(y_pred: Tensor, y: Tensor):
     top_pred = y_pred.argmax(1, keepdim=True)
     correct = top_pred.eq(y.view_as(top_pred)).sum()
     acc = correct.float() / y.shape[0]
@@ -159,16 +209,19 @@ def calculate_accuracy(y_pred: Tensor, y: Tensor):
 
 
 def train_one_epoch(epoch: int, model: torch.nn.Module, loader: torch.utils.data.DataLoader,
-                    optimizer: torch.optim.Optimizer, train_loss_fn: Callable, args, device=torch.device('cuda')
+                    optimizer: torch.optim.Optimizer, lr_scheduler, train_loss_fn: Callable, args,
+                    device=torch.device('cuda')
                     ) -> Tuple[float, float]:
     num_batches = len(loader)
     last_idx = num_batches - 1
+    num_updates = epoch * num_batches
     epoch_loss = 0.0
     epoch_acc = 0.0
 
     model.train()
 
     for batch_idx, (inputs, targets) in enumerate(loader):
+        last_batch = batch_idx == last_idx
         inputs = inputs.to(device)
         targets = targets.to(device)
 
@@ -178,21 +231,55 @@ def train_one_epoch(epoch: int, model: torch.nn.Module, loader: torch.utils.data
 
         loss = train_loss_fn(outputs, targets)
 
-        acc = calculate_accuracy(outputs, targets)
+        acc = accuracy(outputs, targets)
         loss.backward()
         optimizer.step()
+        num_updates += 1
 
         epoch_loss += loss.item()
         epoch_acc += acc.item()
 
-        if batch_idx % args.log_interval == 0:
+        if (batch_idx + 1) % args.log_interval == 0:
             _logger.info(
                 f"Epoch: {epoch} [{batch_idx}/{num_batches} ({100 * batch_idx / last_idx:.0f}%)]     "
                 f"Loss: {loss:.3f} ({epoch_loss / (batch_idx + 1):.3f})    "
                 f"Acc: {acc:.3f} ({epoch_acc / (batch_idx + 1):.3f})"
             )
 
+        if last_batch or (batch_idx + 1) % args.recovery_interval == 0:
+            torch.save({
+                'epoch': epoch,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+            }, os.path.join(args.checkpoint_dir, args.experiment, f"{epoch}_{batch_idx}.pt"))
+
+        if args.sched == 'plateau':
+            lr_scheduler.step_update(num_updates=num_updates, metric=(epoch_loss / num_batches))
+
     return epoch_loss / num_batches, epoch_acc / num_batches
+
+
+def validate(model: torch.nn.Module, loader: torch.utils.data.DataLoader, loss_fn: Callable, args,
+             device=torch.device('cuda')) -> Tuple[float, float]:
+    model.eval()
+    num_batches = len(loader)
+    last_idx = len(loader) - 1
+    val_loss = 0.0
+    val_acc = 0.0
+    with torch.no_grad():
+        for batch_idx, (inputs, targets) in enumerate(loader):
+            inputs = inputs.to(device)
+            targets = targets.to(device)
+
+            outputs = model(inputs)
+
+            loss = loss_fn(outputs, targets)
+            acc = accuracy(outputs, targets)
+
+            val_loss += loss
+            val_acc += acc
+
+    return val_loss / num_batches, val_acc / num_batches
 
 
 if __name__ == '__main__':

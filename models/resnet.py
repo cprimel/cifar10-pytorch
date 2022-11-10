@@ -149,7 +149,7 @@ class ResNet(nn.Module):
             layers.append(block(self.in_channels, out_channels, stride, base_width=self.base_width, groups=self.groups))
         return nn.Sequential(*layers)
 
-    def _forward_impl(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -165,8 +165,8 @@ class ResNet(nn.Module):
         x = self.fc(x)
         return x
 
-    def forward(self, x: Tensor) -> Tensor:
-        return self._forward_impl(x)
+    # def forward(self, x: Tensor) -> Tensor:
+    #     return self._forward_impl(x)
 
 
 def ResNet18():
@@ -174,7 +174,7 @@ def ResNet18():
 
 
 def ResNet10():
-    return ResNet(Bottleneck, [1, 1, 1, 1])
+    return ResNet(ResBlock, [1, 1, 1, 1])
 
 
 def ResNeXt10_32_2d():
