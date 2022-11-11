@@ -52,7 +52,9 @@ group = parser.add_argument_group('Learning rate schedule parameters')
 group.add_argument('--sched', type=str, default='cosine_warm', metavar='SCHEDULER',
                    help='LR scheduler (default: "cosine_warm")')
 group.add_argument('--lr', type=float, default=0.01, metavar='LR',
-                   help='learning rate, overrides lr-base if set (default: None)')
+                   help='learning rate (default: 0.0`)')
+group.add_argument('--min-lr', type=float, default=0.0, metavar='MINLR',
+                   help='minimum learning rate (default: 0.0)')
 group.add_argument('--epochs', type=int, default=50, metavar='N',
                    help='number of epochs to train (default: 50)')
 group.add_argument('--decay-rate', '--dr', type=float, default=0.1, metavar='RATE',
