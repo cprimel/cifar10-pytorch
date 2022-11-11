@@ -258,9 +258,6 @@ def train_one_epoch(epoch: int, model: torch.nn.Module, loader: torch.utils.data
                 'optimizer_state_dict': optimizer.state_dict(),
             }, os.path.join(args.checkpoint_dir, args.experiment, f"{epoch}_{batch_idx}.pt"))
 
-        if args.sched == 'plateau':
-            lr_scheduler.step_update(num_updates=num_updates, metric=(epoch_loss / num_batches))
-
     return epoch_loss / num_batches, epoch_acc / num_batches
 
 
