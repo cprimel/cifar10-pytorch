@@ -24,8 +24,8 @@ def create_transform(input_size, mean: Tuple[float, float, float], std: Tuple[fl
         if vflip > 0.0:
             t += [transforms.RandomVerticalFlip(p=vflip)]
         if rand_aug:
-            t += transforms.RandAugment(num_ops=1, magnitude=8)
+            t += [transforms.RandAugment(num_ops=1, magnitude=8)]
         if jitter:
-            t += transforms.ColorJitter(0.1, 0.1, 0.1)
+            t += [transforms.ColorJitter(0.1, 0.1, 0.1)]
     t += [transforms.ToTensor(), transforms.Normalize(mean=torch.Tensor(mean), std=torch.Tensor(std))]
     return transforms.Compose(t)
