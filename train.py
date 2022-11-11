@@ -21,7 +21,7 @@ from utils import create_optimizer, create_scheduler
 
 _logger = logging.getLogger('train')
 
-config_parser = parser = argparse.ArgumentParser(description="Training Config", add_help=False)
+config_parser = parser = argparse.ArgumentParser(description="PyTorch CIFAR-10 Training", add_help=False)
 parser.add_argument('-c', '--config', default='', type=str, metavar='FILE',
                     help='YAML config file specifying default arguments')
 
@@ -49,8 +49,8 @@ group.add_argument('--weight-decay', type=float, default=2e-5,
 
 # Learning rate schedule parameters
 group = parser.add_argument_group('Learning rate schedule parameters')
-group.add_argument('--sched', type=str, default='cosine', metavar='SCHEDULER',
-                   help='LR scheduler (default: "cosine")')
+group.add_argument('--sched', type=str, default='cosine_warm', metavar='SCHEDULER',
+                   help='LR scheduler (default: "cosine_warm")')
 group.add_argument('--lr', type=float, default=0.01, metavar='LR',
                    help='learning rate, overrides lr-base if set (default: None)')
 group.add_argument('--epochs', type=int, default=50, metavar='N',
@@ -118,6 +118,9 @@ def main():
     log_path = os.path.join(args.log_dir, args.experiment)
     if not os.path.exists(log_path):
         os.makedirs(log_path)
+    with open(os.path.join(log_path, f"{args.experiment}_config.yml"), "w") as f:
+        f.write(args_text)
+        f.close()
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     """
@@ -143,14 +146,13 @@ def main():
     train_data = torchvision.datasets.CIFAR10(ROOT,
                                               train=True,
                                               download=True)
-    mean = train_data.data.mean(axis=(0, 1, 2)) / 255
-    std = train_data.data.std(axis=(0, 1, 2)) / 255
+    mean = (0.4914, 0.4822, 0.4465)
+    std = (0.2471, 0.2435, 0.2616)
+
     n_train = int(len(train_data) * args.val_ratio)
     n_val = len(train_data) - n_train
     train_data, val_data = torch.utils.data.random_split(train_data, [n_train, n_val])
-    # test_data = torchvision.datasets.CIFAR10(ROOT,
-    #                                          train=False,
-    #                                          download=True)
+
     # TODO: Add optional mixup / cutmix augmentation
 
     # Create dataloaders w/augmentation pipeline
@@ -196,9 +198,10 @@ def main():
     # dump loss and accuracy metrics to json
     if metrics:
         data_dump = json.dumps(metrics)
-        f = open(os.path.join(log_path, f"{time.time()}"), "w")
+        f = open(os.path.join(log_path, f"train_{time.time()}"), "w")
         f.write(data_dump)
         f.close()
+
 
 
 def accuracy(y_pred: Tensor, y: Tensor):

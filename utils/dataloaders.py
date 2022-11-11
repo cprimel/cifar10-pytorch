@@ -1,5 +1,6 @@
+from typing import Tuple
+
 import torch.utils.data
-from torch import Tensor
 
 from .transforms import create_transform
 
@@ -19,7 +20,8 @@ class Dataset(torch.utils.data.Dataset):
         return len(self.subset)
 
 
-def create_loader(dataset, input_size, mean: Tensor, std: Tensor, batch_size: int = 128, is_training: bool = False,
+def create_loader(dataset, input_size, mean: Tuple[float, float, float], std: Tuple[float, float, float],
+                  batch_size: int = 128, is_training: bool = False,
                   no_aug: bool = False, hflip: float = 0.5, vflip: float = 0.0,
                   crop_pct: float = 0.0) -> torch.utils.data.DataLoader:
     if isinstance(dataset, torch.utils.data.Subset):
