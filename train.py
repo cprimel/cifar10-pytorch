@@ -74,6 +74,11 @@ group.add_argument('--hflip', type=float, default=0.5,
                    help='Horizontal flip training aug probability')
 group.add_argument('--vflip', type=float, default=0.,
                    help='Vertical flip training aug probability')
+group.add_argument('--scale', type=float, default=0.9, help='scale for random resizing')
+group.add_argument('--rand_aug', type=float, default=0.0, help='prob for random augmentation')
+group.add_argument('--erase', type=float, default=0.25, help='prob for random erasing')
+group.add_argument('--jitter', type=float, default=0.1, help='prob for color jitter')
+group.add_argument('--clip-norm', action='store_true', help='clip norm action')
 
 # Misc
 group = parser.add_argument_group('Miscellaneous parameters')
@@ -125,13 +130,9 @@ def main():
         f.close()
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    """
-        TODO: Revise model creation to take parameters as kwargs:
-            
-            model_registry[args.model] -> model_registry[args.model](**kwargs)
-            
-        Requires adding direct call to class definition, e.g., { "resnet": ResNet }   
-    """
+    #        TODO: Revise model creation to take parameters as kwargs:
+    #           model_registry[args.model] -> model_registry[args.model](**kwargs)
+    #      Requires adding direct call to class definition, e.g., { "resnet": ResNet }
 
     model = model_registry[args.model]()
     model = model.to(device)
@@ -161,7 +162,8 @@ def main():
     input_size = (3, 32, 32)
 
     train_loader = utils.create_loader(train_data, input_size=input_size, mean=mean, std=std,
-                                       batch_size=args.batch_size, is_training=True)
+                                       batch_size=args.batch_size, is_training=True, rand_aug=args.rand_aug,
+                                       jitter=args.jitter, scale=args.scale, prob_erase=args.erase)
     val_loader = utils.create_loader(val_data, input_size=input_size, mean=mean, std=std, batch_size=args.batch_size,
                                      is_training=False)
 
@@ -174,25 +176,32 @@ def main():
         start_epoch = ckpt['epoch']
 
     # Create scheduler
-    lr_scheduler = create_scheduler(optimizer=optimizer, sched=args.sched, num_epochs=args.epochs, min_lr=args.min_lr,
+    lr_scheduler = create_scheduler(optimizer=optimizer, lr=args.lr, sched=args.sched, num_epochs=args.epochs,
+                                    min_lr=args.min_lr,
                                     T_0=args.t_initial, T_mult=args.t_mult, plateau_mode=args.plateau_mode,
                                     patience=args.patience)
-    if lr_scheduler is not None and start_epoch > 0:
+    if (lr_scheduler is not None or lr_scheduler != 'custom') and start_epoch > 0:
         lr_scheduler.step(start_epoch)
 
     metrics = {}
     try:
         for epoch in range(start_epoch, args.epochs):
+            start = time.time()
+
             (train_loss, train_acc) = train_one_epoch(epoch, model, train_loader, optimizer, lr_scheduler,
                                                       train_loss_fn, args,
                                                       device)
             (val_loss, val_acc) = validate(model, val_loader, validate_loss_fn, args, device)
+
+            _logger.info(
+                f"Epoch {epoch + 1} complete:\n\tTrain Acc: {train_acc:.2f}\n\tTest Acc: {val_acc}\n\t"
+                f"Time: {time.time() - start:.1f}s, ")
             # TODO:
             #  Find better solution:
             #       val_loss and val_acc are returned as tensors--they shouldn't be!
             metrics[epoch] = {'train_loss': train_loss, 'train_acc': train_acc, 'val_loss': val_loss.item(),
                               'val_acc': val_acc.item()}
-            if lr_scheduler is not None:
+            if lr_scheduler is not None and args.sched != 'custom':
                 lr_scheduler.step(epoch + 1, args.eval_metric)
     except KeyboardInterrupt:
         pass
@@ -205,7 +214,6 @@ def main():
         f.close()
 
 
-
 def accuracy(y_pred: Tensor, y: Tensor):
     top_pred = y_pred.argmax(1, keepdim=True)
     correct = top_pred.eq(y.view_as(top_pred)).sum()
@@ -214,7 +222,7 @@ def accuracy(y_pred: Tensor, y: Tensor):
 
 
 def train_one_epoch(epoch: int, model: torch.nn.Module, loader: torch.utils.data.DataLoader,
-                    optimizer: torch.optim.Optimizer, lr_scheduler, train_loss_fn: Callable, args,
+                    optimizer: torch.optim.Optimizer, lr_scheduler: Callable, train_loss_fn: Callable, args,
                     device=torch.device('cuda')
                     ) -> Tuple[float, float]:
     num_batches = len(loader)
@@ -230,13 +238,21 @@ def train_one_epoch(epoch: int, model: torch.nn.Module, loader: torch.utils.data
         inputs = inputs.to(device)
         targets = targets.to(device)
 
+        lr = None
+        if args.sched == 'custom':
+            lr = lr_scheduler(epoch + (batch_idx + 1) / len(loader))
+            optimizer.param_groups[0].update(lr=lr)
+        else:
+            lr = lr_scheduler.get_lr()
+
         optimizer.zero_grad()
 
         outputs = model(inputs)
-
         loss = train_loss_fn(outputs, targets)
-
         acc = accuracy(outputs, targets)
+
+        if args.clip_norm:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         loss.backward()
         optimizer.step()
         num_updates += 1
@@ -248,7 +264,8 @@ def train_one_epoch(epoch: int, model: torch.nn.Module, loader: torch.utils.data
             _logger.info(
                 f"Epoch: {epoch} [{batch_idx}/{num_batches} ({100 * batch_idx / last_idx:.0f}%)]     "
                 f"Loss: {loss:.3f} ({epoch_loss / (batch_idx + 1):.3f})    "
-                f"Acc: {acc:.3f} ({epoch_acc / (batch_idx + 1):.3f})"
+                f"Acc: {acc:.3f} ({epoch_acc / (batch_idx + 1):.3f})    "
+                f"lr: {lr:.6f}"
             )
 
         if last_batch or (batch_idx + 1) % args.recovery_interval == 0:

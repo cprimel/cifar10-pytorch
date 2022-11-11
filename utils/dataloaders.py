@@ -23,10 +23,12 @@ class Dataset(torch.utils.data.Dataset):
 def create_loader(dataset, input_size, mean: Tuple[float, float, float], std: Tuple[float, float, float],
                   batch_size: int = 128, is_training: bool = False,
                   no_aug: bool = False, hflip: float = 0.5, vflip: float = 0.0,
-                  crop_pct: float = 0.0) -> torch.utils.data.DataLoader:
+                  crop_pct: float = 0.0, rand_aug: bool = False, jitter: float = 0.1, scale: float = 0.9,
+                  prob_erase: float = 0.0) -> torch.utils.data.DataLoader:
     if isinstance(dataset, torch.utils.data.Subset):
         dataset = Dataset(dataset)
     dataset.transform = create_transform(input_size=input_size, mean=mean, std=std, is_training=is_training,
-                                         no_aug=no_aug, hflip=hflip, vflip=vflip, crop_pct=crop_pct)
+                                         no_aug=no_aug, hflip=hflip, vflip=vflip, crop_pct=crop_pct, rand_aug=rand_aug,
+                                         jitter=jitter, scale=scale, prob_erase=prob_erase)
     loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=is_training)
     return loader

@@ -4,20 +4,22 @@ resume: ''
 batch_size: 128
 
 # Optimizer
-opt: 'adam'
-opt-eps:
-momentum: 0.9
-weight_decay: 1e-5
+opt: 'adamw'
+weight_decay: 0.005
 
 # Scheduler
-sched: 'plateau'
+sched: 'custom'
 lr: 0.05
-epochs: 200
+epochs: 25
 
 
 # Aug + regularization
 hflip: 0.5
 vflip: 0.0
+scale: 1.0
+erase: 0.0
+jitter: 0.0
+#clip_norm: True
 
 # Misc.
 log_interval: 100

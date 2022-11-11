@@ -9,4 +9,6 @@ def create_optimizer(params, opt_name: str = "sgd", lr: float = 0.01, weight_dec
     elif opt_name == "adam":
         optimizer = torch.optim.Adam(params=params, lr=lr, eps=eps,
                                      weight_decay=weight_decay)
+    elif opt_name == "adamw":
+        optimizer = torch.optim.AdamW(params=params, lr=lr, weight_decay=weight_decay)
     return optimizer
