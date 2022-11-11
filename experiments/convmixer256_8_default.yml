@@ -10,8 +10,8 @@ momentum: 0.9
 weight_decay: 1e-5
 
 # Scheduler
-sched: ''
-lr: 0.1
+sched: 'plateau'
+lr: 0.05
 epochs: 200
 
 

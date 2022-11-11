@@ -7,7 +7,7 @@ from torchvision.transforms import InterpolationMode
 
 def create_transform(input_size, mean: Tuple[float, float, float], std: Tuple[float, float, float],
                      is_training: bool = False, no_aug: bool = False, hflip: float = 0.5, vflip: float = 0.0,
-                     crop_pct: float = 0.0, rand_aug: bool = True, jitter: bool = True):
+                     crop_pct: float = 0.0, rand_aug: bool = True, jitter: bool = False):
     if isinstance(input_size, (tuple, list)):
         img_size = input_size[-2:]
     else:
