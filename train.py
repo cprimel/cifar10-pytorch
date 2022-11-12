@@ -16,7 +16,7 @@ from models import model_registry
 from utils import create_optimizer, create_scheduler
 
 """
-    See https://github.com/rwightman/pytorch-image-models/blob/main/train.py
+    See https://github.com/rwightman/pytorch-image-models/blob/main/train.py.
 """
 
 _logger = logging.getLogger('train')
@@ -52,10 +52,10 @@ group = parser.add_argument_group('Learning rate schedule parameters')
 group.add_argument('--sched', type=str, default='cosine_warm', metavar='SCHEDULER',
                    help='LR scheduler (default: "cosine_warm")')
 group.add_argument('--lr', type=float, default=0.01, metavar='LR',
-                   help='learning rate (default: 0.0`)')
+                   help='learning rate (default: 0.01`)')
 group.add_argument('--min-lr', type=float, default=0.0, metavar='MINLR',
                    help='minimum learning rate (default: 0.0)')
-group.add_argument('--epochs', type=int, default=50, metavar='N',
+group.add_argument('--epochs', type=int, default=300, metavar='N',
                    help='number of epochs to train (default: 50)')
 group.add_argument('--decay-rate', '--dr', type=float, default=0.1, metavar='RATE',
                    help='LR decay rate (default: 0.1)')
@@ -67,6 +67,7 @@ group.add_argument('--plateau-mode', type=str, default='min', metavar='P_M',
                    help='plateau mode for LR reduction on plateau (default: "min")')
 group.add_argument('--patience', type=int, default=10, metavar='PAT',
                    help='Number of updates to wait before reducing LR (default: 10)')
+
 # Augmentation & regularization parameters
 group = parser.add_argument_group('Augmentation and regularization parameters')
 group.add_argument('--val-ratio', type=float, default=0.9, help='ratio for train-validation split')
@@ -76,6 +77,8 @@ group.add_argument('--vflip', type=float, default=0.,
                    help='Vertical flip training aug probability')
 group.add_argument('--scale', type=float, default=0.9, help='scale for random resizing')
 group.add_argument('--rand_aug', type=float, default=0.0, help='prob for random augmentation')
+group.add_argument('--ra-n', type=float, default=0.0, help='number of random augmentation ops')
+group.add_argument('--ra-m', type=float, default=0.0, help='magnitude of random augmentation ops')
 group.add_argument('--erase', type=float, default=0.25, help='prob for random erasing')
 group.add_argument('--jitter', type=float, default=0.1, help='prob for color jitter')
 group.add_argument('--clip-norm', action='store_true', help='clip norm action')
@@ -130,9 +133,9 @@ def main():
         f.close()
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    #        TODO: Revise model creation to take parameters as kwargs:
+    #        TODO: Revise model creation to take parameters as kwargs?
     #           model_registry[args.model] -> model_registry[args.model](**kwargs)
-    #      Requires adding direct call to class definition, e.g., { "resnet": ResNet }
+    #           Requires adding direct call to class definition, e.g., { "resnet": ResNet }
 
     model = model_registry[args.model]()
     model = model.to(device)
@@ -163,7 +166,7 @@ def main():
 
     train_loader = utils.create_loader(train_data, input_size=input_size, mean=mean, std=std,
                                        batch_size=args.batch_size, is_training=True, rand_aug=args.rand_aug,
-                                       jitter=args.jitter, scale=args.scale, prob_erase=args.erase)
+                                       ra_n=args.ra_n, ra_m=args.ra_m, jitter=args.jitter, scale=args.scale, prob_erase=args.erase)
     val_loader = utils.create_loader(val_data, input_size=input_size, mean=mean, std=std, batch_size=args.batch_size,
                                      is_training=False)
 

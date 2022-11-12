@@ -7,7 +7,8 @@ from torchvision.transforms import InterpolationMode
 
 def create_transform(input_size, mean: Tuple[float, float, float], std: Tuple[float, float, float],
                      is_training: bool = False, no_aug: bool = False, hflip: float = 0.5, vflip: float = 0.0,
-                     crop_pct: float = 0.0, rand_aug: bool = True, jitter: float = 0.1, scale: float = 0.9,
+                     crop_pct: float = 0.0, rand_aug: bool = False, ra_n: int = 1, ra_m: int = 8, jitter: float = 0.0,
+                     scale: float = 0.9,
                      prob_erase: float = 0.0):
     if isinstance(input_size, (tuple, list)):
         img_size = input_size[-2:]
@@ -25,11 +26,11 @@ def create_transform(input_size, mean: Tuple[float, float, float], std: Tuple[fl
         if vflip > 0.0:
             t += [transforms.RandomVerticalFlip(p=vflip)]
         if rand_aug:
-            t += [transforms.RandAugment(num_ops=2, magnitude=12)]
+            t += [transforms.RandAugment(num_ops=ra_n, magnitude=ra_m)]
         if jitter > 0.0:
             t += [transforms.ColorJitter(jitter, jitter, jitter)]
     t += [transforms.ToTensor(), transforms.Normalize(mean=torch.Tensor(mean), std=torch.Tensor(std))]
-    if is_training and not no_aug:
+    if prob_erase > 0.0:
         t += [transforms.RandomErasing(p=prob_erase)]
 
     return transforms.Compose(t)
