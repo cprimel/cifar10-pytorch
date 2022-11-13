@@ -31,3 +31,5 @@ checkpoint_dir: 'ckpts'
 log_dir: 'logs'
 output: 'results'
 experiment: 'convmixer256_8_001'
+
+# ~93%
