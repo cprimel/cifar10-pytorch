@@ -1,7 +1,8 @@
 # Model
 model: 'convmixer256_8'
 resume: ''
-batch_size: 128
+batch_size: 512
+kernel_size: 5
 
 # Optimizer
 opt: 'adamw'
@@ -30,6 +31,6 @@ checkpoint_hist: 5
 checkpoint_dir: 'ckpts'
 log_dir: 'logs'
 output: 'results'
-experiment: 'convmixer256_8_001'
+experiment: 'convmixer256_8_k5_01'
 
 # ~93%
