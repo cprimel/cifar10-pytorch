@@ -1,5 +1,5 @@
 # Model
-model: 'convmixer256_8'
+model: 'convmixer256_8_k5'
 resume: ''
 batch_size: 512
 kernel_size: 5
