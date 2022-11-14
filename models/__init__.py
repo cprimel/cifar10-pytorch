@@ -1,4 +1,4 @@
-from .convmixer import ConvMixer256_8_k5, ConvMixer256_8_k9, ConvMixer256_16_k8
+from .convmixer import ConvMixer256_8_k5, ConvMixer256_8_k9, ConvMixer256_16_k9
 from .resnet import ResNet10, ResNeXt10_32_2d
 
 """
@@ -9,6 +9,6 @@ model_registry = {
     "resnext10_32_2d": ResNeXt10_32_2d,
     "convmixer256_8_k5": ConvMixer256_8_k5,
     "convmixer256_8_k9": ConvMixer256_8_k9,
-    "convmixer256_16_k8": ConvMixer256_16_k8
+    "convmixer256_16_k9": ConvMixer256_16_k9
 
 }
