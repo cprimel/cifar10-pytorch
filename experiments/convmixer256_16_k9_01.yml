@@ -1,5 +1,5 @@
 # Model
-model: 'convmixer256_16_k8'
+model: 'convmixer256_16_k9'
 resume: ''
 batch_size: 128 # max batch size to fit in colab gpu ram when k=8, d=16
 depth: 16
