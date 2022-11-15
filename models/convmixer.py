@@ -42,6 +42,10 @@ def ConvMixer256_8_k5():
     return ConvMixer(depth=8, kernel_size=5)
 
 
+def ConvMixer256_8_k5_p2():
+    return ConvMixer(depth=8, kernel_size=5, patch_size=2)
+
+
 def ConvMixer256_8_k9():
     return ConvMixer(depth=8, kernel_size=9)
 
