@@ -23,7 +23,7 @@ class Dataset(torch.utils.data.Dataset):
 def create_loader(dataset, input_size, mean: Tuple[float, float, float], std: Tuple[float, float, float],
                   batch_size: int = 128, is_training: bool = False,
                   no_aug: bool = False, hflip: float = 0.5, vflip: float = 0.0,
-                  crop_pct: float = 0.0, rand_aug: bool = 0.0, ra_n: int = 1, ra_m: int = 8, jitter: float = 0.0,
+                  crop_pct: float = 0.0, rand_aug: bool = False, ra_n: int = 1, ra_m: int = 8, jitter: float = 0.0,
                   scale: float = 0.9, prob_erase: float = 0.0) -> torch.utils.data.DataLoader:
     if isinstance(dataset, torch.utils.data.Subset):
         dataset = Dataset(dataset)

@@ -76,7 +76,7 @@ group.add_argument('--hflip', type=float, default=0.5,
 group.add_argument('--vflip', type=float, default=0.,
                    help='Vertical flip training aug probability')
 group.add_argument('--scale', type=float, default=0.9, help='scale for random resizing')
-group.add_argument('--rand_aug', type=float, default=0.0, help='prob for random augmentation')
+group.add_argument('--rand_aug', type=bool, default=False, help='toggle random augmentation')
 group.add_argument('--ra-n', type=float, default=0.0, help='number of random augmentation ops')
 group.add_argument('--ra-m', type=float, default=0.0, help='magnitude of random augmentation ops')
 group.add_argument('--erase', type=float, default=0.25, help='prob for random erasing')
