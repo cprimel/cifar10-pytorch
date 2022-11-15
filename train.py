@@ -2,7 +2,6 @@ import argparse
 import json
 import logging
 import os.path
-import sys
 import time
 from typing import Tuple, Callable
 
@@ -167,7 +166,8 @@ def main():
 
     train_loader = utils.create_loader(train_data, input_size=input_size, mean=mean, std=std,
                                        batch_size=args.batch_size, is_training=True, rand_aug=args.rand_aug,
-                                       ra_n=args.ra_n, ra_m=args.ra_m, jitter=args.jitter, scale=args.scale, prob_erase=args.erase)
+                                       ra_n=args.ra_n, ra_m=args.ra_m, jitter=args.jitter, scale=args.scale,
+                                       prob_erase=args.erase)
     val_loader = utils.create_loader(val_data, input_size=input_size, mean=mean, std=std, batch_size=args.batch_size,
                                      is_training=False)
 
@@ -195,22 +195,24 @@ def main():
             start = time.time()
 
             (train_loss, train_acc, lr) = train_one_epoch(epoch, model, train_loader, optimizer, lr_scheduler,
-                                                      train_loss_fn, args,
-                                                      device)
+                                                          train_loss_fn, args,
+                                                          device)
             (val_loss, val_acc) = validate(model, val_loader, validate_loss_fn, args, device)
 
+            t_epoch = time.time() - start
             _logger.info(
-                f"Epoch {epoch + 1} complete:\n\tTrain Acc: {train_acc:.2f}\n\tTest Acc: {val_acc}\n\t"
-                f"lr: {lr:.2f}n\tTime: {time.time() - start:.1f}s, ")
+                f"Epoch {epoch + 1} complete:\n\tTrain Acc: {train_acc:.2f}\n\tTest Acc: {val_acc:.2f}\n\t"
+                f"lr: {lr:.5f}\n\tTime: {t_epoch:.1f}s, ")
             # TODO:
             #  Find better solution:
             #       val_loss and val_acc are returned as tensors--they shouldn't be!
             metrics[epoch] = {'train_loss': train_loss, 'train_acc': train_acc, 'val_loss': val_loss.item(),
-                              'val_acc': val_acc.item(), "lr": lr}
+                              'val_acc': val_acc.item(), "lr": lr, "t_epoch": t_epoch}
 
             if best_acc is None or val_acc > best_acc:
                 if best_acc is not None:
-                    _logger.info(f"Accuracy increased ({0.00 if None else best_acc:.2f} -> {val_acc:.2f})\tSaving model...")
+                    _logger.info(
+                        f"Accuracy increased ({0.00 if None else best_acc:.2f} -> {val_acc:.2f}). Saving model...")
                 torch.save({
                     'epoch': epoch,
                     'loss': val_loss,

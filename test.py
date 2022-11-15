@@ -21,10 +21,11 @@ parser.add_argument('--device', default='cuda', type=str,
                     help="Device (accelerator) to use.")
 parser.add_argument('-b', '--batch-size', default=256, type=int,
                     metavar='N', help='mini-batch size (default: 256)')
-parser.add_argument('--log-freq', default=10, type=int,
+parser.add_argument('--log-interval', default=10, type=int,
                     metavar='N', help='batch logging frequency (default: 10)')
 parser.add_argument('--results-file', default='', type=str, metavar='FILENAME',
                     help='Output csv file for validation results (summary)')
+
 
 def accuracy(y_pred: Tensor, y: Tensor):
     top_pred = y_pred.argmax(1, keepdim=True)
@@ -80,19 +81,21 @@ def validate(args):
             results[batch_idx] = {'test_loss': loss, 'test_acc': acc}
             if (batch_idx + 1) % args.log_interval == 0:
                 _logger.info(
-                    f"Test: [{batch_idx+1}/{num_batches}     "
+                    f"Test: [{batch_idx + 1}/{num_batches}     "
                     f"Loss: {loss:.3f} ({test_loss / (batch_idx + 1):.3f})    "
                     f"Acc: {acc:.3f} ({test_acc / (batch_idx + 1):.3f})"
                 )
+
         return test_loss / num_batches, test_acc / num_batches
 
 
 def main():
+    utils.setup_default_logging()
     args = parser.parse_args()
 
     test_loss, test_acc = validate(args)
+    _logger.info(f"Results:\n\tLoss: {test_loss.item():.2f}\tAcc: {test_acc.item():.2f}")
 
-    _logger.info(f"Results:\n\tLoss: {test_loss:.2f}\tAcc: {test_acc:.2f}")
 
 if __name__ == '__main__':
     main()
