@@ -20,7 +20,6 @@ vflip: 0.0
 scale: 1.0
 erase: 0.0
 jitter: 0.0
-#clip_norm: True
 
 # Misc.
 log_interval: 100
