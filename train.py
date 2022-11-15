@@ -209,7 +209,8 @@ def main():
                               'val_acc': val_acc.item(), "lr": lr}
 
             if best_acc is None or val_acc > best_acc:
-                _logger.info(f"Accuracy increased ({0.00 if None else best_acc:.2f} -> {val_acc:.2f})\tSaving model...")
+                if best_acc is not None:
+                    _logger.info(f"Accuracy increased ({0.00 if None else best_acc:.2f} -> {val_acc:.2f})\tSaving model...")
                 torch.save({
                     'epoch': epoch,
                     'loss': val_loss,
@@ -217,6 +218,7 @@ def main():
                     'model_state_dict': model.state_dict(),
                     'optimizer_state_dict': optimizer.state_dict(),
                 }, os.path.join(args.checkpoint_dir, args.experiment, f"{args.model}_{epoch}_{time.time()}.pt"))
+                best_acc = val_acc
 
             if lr_scheduler is not None and args.sched != 'onecycle':
                 lr_scheduler.step(epoch + 1, args.eval_metric)
