@@ -209,7 +209,7 @@ def main():
                               'val_acc': val_acc.item(), "lr": lr}
 
             if best_acc is None or val_acc > best_acc:
-                _logger.info(f"Accuracy increased ({best_acc:.2f} -> {val_acc:.2f})\tSaving model...")
+                _logger.info(f"Accuracy increased ({0.00 if None else best_acc:.2f} -> {val_acc:.2f})\tSaving model...")
                 torch.save({
                     'epoch': epoch,
                     'loss': val_loss,
