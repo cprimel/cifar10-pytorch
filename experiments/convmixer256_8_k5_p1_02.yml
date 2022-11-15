@@ -1,5 +1,5 @@
 # Model
-model: 'convmixer256_8_k5'
+model: 'convmixer256_8_k5_p1'
 resume: ''
 batch_size: 512
 kernel_size: 5
@@ -11,16 +11,17 @@ weight_decay: 0.005
 # Scheduler
 sched: 'onecycle'
 lr: 0.05
-epochs: 25
+epochs: 100
 
 
 # Aug + regularization
 hflip: 0.5
 vflip: 0.0
 scale: 1.0
-erase: 0.0
-jitter: 0.0
-#clip_norm: True
+erase: 0.2
+jitter: 0.2
+ra_n: 2
+ra_m: 12
 
 # Misc.
 log_interval: 100
@@ -29,6 +30,6 @@ checkpoint_hist: 5
 checkpoint_dir: 'ckpts'
 log_dir: 'logs'
 output: 'results'
-experiment: 'convmixer256_8_k5_00'
+experiment: 'convmixer256_8_k5_p1_02'
 
-# ~90% w/epochs = 100
+# ~93%

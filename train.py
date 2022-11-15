@@ -202,8 +202,8 @@ def main():
             t_epoch = time.time() - start
             logging.info(
                 f"Epoch {epoch + 1} complete:\n\tTrain Acc: {train_acc:.2f}\n\tTest Acc: {val_acc:.2f}\n\t"
-                # f"lr: {lr:.5f}\n\tTime: {t_epoch:.1f}s")
-            )
+                f"lr: {lr:.5f}\n\tTime: {t_epoch:.1f}s")
+
             # TODO:
             #  Find better solution:
             #       val_loss and val_acc are returned as tensors--they shouldn't be!
@@ -281,7 +281,7 @@ def train_one_epoch(epoch: int, model: torch.nn.Module, loader: torch.utils.data
                 f"Epoch: {epoch + 1} [{batch_idx + 1}/{num_batches} ({100 * batch_idx / last_idx:.0f}%)]     "
                 f"Loss: {loss:.3f} ({epoch_loss / (batch_idx + 1):.3f})    "
                 f"Acc: {acc:.3f} ({epoch_acc / (batch_idx + 1):.3f})    "
-                # f"lr: {lr:.6f}"
+                f"lr: {lr:.6f}"
             )
 
     return epoch_loss / num_batches, epoch_acc / num_batches, lr

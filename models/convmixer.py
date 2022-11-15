@@ -38,17 +38,20 @@ def ConvMixer(dim: int = 256, depth: int = 8, kernel_size: int = 9, patch_size: 
     )
 
 
-def ConvMixer256_8_k5():
-    return ConvMixer(depth=8, kernel_size=5)
+def ConvMixer256_8_k5_p1():
+    return ConvMixer(depth=8, kernel_size=5, patch_size=1)
 
 
 def ConvMixer256_8_k5_p2():
     return ConvMixer(depth=8, kernel_size=5, patch_size=2)
 
 
-def ConvMixer256_8_k9():
-    return ConvMixer(depth=8, kernel_size=9)
+def ConvMixer256_8_k9_p1():
+    return ConvMixer(depth=8, kernel_size=9, patch_size=1)
+
+def ConvMixer256_8_k9_p2():
+    return ConvMixer(depth=8, kernel_size=9, patch_size=2)
 
 
-def ConvMixer256_16_k9():
-    return ConvMixer(depth=16, kernel_size=9)
+def ConvMixer256_16_k9_p2():
+    return ConvMixer(depth=16, kernel_size=9, patch_size=2)
