@@ -14,8 +14,8 @@ def oneCycleLR(num_epochs: int, lr: float) -> Callable:
 
 
 def create_scheduler(optimizer: torch.optim.Optimizer, lr: float, sched: str = 'cosine_warm', num_epochs: int = 300,
-                     min_lr: float = 0.0, T_0: int = 200, T_mult: int = 1, plateau_mode: str = 'min',
-                     patience: int = 10):
+                     steps_per_epoch: int = 10, min_lr: float = 0.0, T_0: int = 200, T_mult: int = 1,
+                     plateau_mode: str = 'min', patience: int = 10):
     lr_scheduler = None
     if sched == 'cosine_warm':
         lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer=optimizer,
@@ -26,5 +26,7 @@ def create_scheduler(optimizer: torch.optim.Optimizer, lr: float, sched: str = '
         lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer, mode=plateau_mode,
                                                                   patience=patience)
     elif sched == 'onecycle':
-        lr_scheduler = oneCycleLR(num_epochs, lr)
+        # lr_scheduler = oneCycleLR(num_epochs, lr)
+        lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer=optimizer, max_lr=lr, epochs=num_epochs,
+                                                           steps_per_epoch=steps_per_epoch)
     return lr_scheduler

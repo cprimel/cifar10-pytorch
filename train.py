@@ -81,7 +81,6 @@ group.add_argument('--ra-n', type=float, default=0.0, help='number of random aug
 group.add_argument('--ra-m', type=float, default=0.0, help='magnitude of random augmentation ops')
 group.add_argument('--erase', type=float, default=0.25, help='prob for random erasing')
 group.add_argument('--jitter', type=float, default=0.1, help='prob for color jitter')
-group.add_argument('--clip-norm', action='store_true', help='clip norm action')
 
 # Misc
 group = parser.add_argument_group('Miscellaneous parameters')
@@ -117,7 +116,6 @@ def _parse_args():
 
 
 def main():
-    utils.setup_default_logging()
     args, args_text = _parse_args()
 
     _logger.info(f"Preparing experiment {args.experiment}...")
@@ -183,7 +181,7 @@ def main():
 
     # Create scheduler
     lr_scheduler = create_scheduler(optimizer=optimizer, lr=args.lr, sched=args.sched, num_epochs=args.epochs,
-                                    min_lr=args.min_lr,
+                                    steps_per_epoch=len(train_loader), min_lr=args.min_lr,
                                     T_0=args.t_initial, T_mult=args.t_mult, plateau_mode=args.plateau_mode,
                                     patience=args.patience)
     if (lr_scheduler is not None or lr_scheduler != 'custom') and start_epoch > 0:
@@ -198,6 +196,8 @@ def main():
                                                           train_loss_fn, args,
                                                           device)
             (val_loss, val_acc) = validate(model, val_loader, validate_loss_fn, args, device)
+            if args.sched == 'plateau':
+                lr_scheduler.step(val_loss)
 
             t_epoch = time.time() - start
             _logger.info(
@@ -222,8 +222,7 @@ def main():
                 }, os.path.join(args.checkpoint_dir, args.experiment, f"{args.model}_{epoch}_{time.time()}.pt"))
                 best_acc = val_acc
 
-            if lr_scheduler is not None and args.sched != 'onecycle':
-                lr_scheduler.step(epoch + 1, args.eval_metric)
+
     except KeyboardInterrupt:
         pass
 
@@ -256,31 +255,26 @@ def train_one_epoch(epoch: int, model: torch.nn.Module, loader: torch.utils.data
     lr = None
 
     for batch_idx, (inputs, targets) in enumerate(loader):
-        last_batch = batch_idx == last_idx
         inputs = inputs.to(device)
         targets = targets.to(device)
 
-        if args.sched == 'onecycle':
-            lr = lr_scheduler(epoch + (batch_idx + 1) / len(loader))
-            optimizer.param_groups[0].update(lr=lr)
-        else:
-            lr = lr_scheduler.get_lr()
-
+        lr = lr_scheduler.get_last_lr()[0]
         optimizer.zero_grad()
 
         outputs = model(inputs)
         loss = train_loss_fn(outputs, targets)
         acc = accuracy(outputs, targets)
 
-        if args.clip_norm:
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         loss.backward()
         optimizer.step()
+        if args.sched == 'onecycle':
+            lr_scheduler.step()
+        elif args.sched == 'cosine_warm':
+            lr_scheduler.step(epoch + batch_idx / num_batches)
         num_updates += 1
 
         epoch_loss += loss.item()
         epoch_acc += acc.item()
-
         if (batch_idx + 1) % args.log_interval == 0:
             _logger.info(
                 f"Epoch: {epoch + 1} [{batch_idx + 1}/{num_batches} ({100 * batch_idx / last_idx:.0f}%)]     "
