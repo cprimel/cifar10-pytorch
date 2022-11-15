@@ -173,7 +173,7 @@ def main():
 
     # Resume from checkpoint
     start_epoch = 0
-    best_acc = sys.float_info.max
+    best_acc = None
     if args.resume:
         ckpt = torch.load(args.resume)
         model.load_state_dict(ckpt['model_state_dict'])
@@ -208,7 +208,7 @@ def main():
             metrics[epoch] = {'train_loss': train_loss, 'train_acc': train_acc, 'val_loss': val_loss.item(),
                               'val_acc': val_acc.item(), "lr": lr}
 
-            if val_acc > best_acc:
+            if best_acc is None or val_acc > best_acc:
                 _logger.info(f"Accuracy increased ({best_acc:.2f} -> {val_acc:.2f})\tSaving model...")
                 torch.save({
                     'epoch': epoch,
