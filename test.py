@@ -9,7 +9,7 @@ from torch import Tensor
 import utils
 from models import model_registry
 
-_logger = logging.getLogger('test')
+logging.basicConfig(level=logging.INFO, format='%(message)s')
 
 parser = argparse.ArgumentParser(description="PyTorch CIFAR-10 Testing")
 parser.add_argument('--model', '-m', metavar='NAME', default='resnet10',
@@ -80,7 +80,7 @@ def validate(args):
 
             results[batch_idx] = {'test_loss': loss, 'test_acc': acc}
             if (batch_idx + 1) % args.log_interval == 0:
-                _logger.info(
+                logging.info(
                     f"Test: [{batch_idx + 1}/{num_batches}     "
                     f"Loss: {loss:.3f} ({test_loss / (batch_idx + 1):.3f})    "
                     f"Acc: {acc:.3f} ({test_acc / (batch_idx + 1):.3f})"
@@ -94,7 +94,7 @@ def main():
     args = parser.parse_args()
 
     test_loss, test_acc = validate(args)
-    _logger.info(f"Results:\n\tLoss: {test_loss.item():.2f}\tAcc: {test_acc.item():.2f}")
+    logging.info(f"Results:\n\tLoss: {test_loss.item():.2f}\tAcc: {test_acc.item():.2f}")
 
 
 if __name__ == '__main__':

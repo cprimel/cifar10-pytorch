@@ -19,7 +19,7 @@ from utils import create_optimizer, create_scheduler
     See https://github.com/rwightman/pytorch-image-models/blob/main/train.py.
 """
 
-_logger = logging.getLogger('train')
+logging.basicConfig(level=logging.INFO, format='%(message)s')
 
 config_parser = parser = argparse.ArgumentParser(description="PyTorch CIFAR-10 Training", add_help=False)
 parser.add_argument('-c', '--config', default='', type=str, metavar='FILE',
@@ -118,7 +118,7 @@ def _parse_args():
 def main():
     args, args_text = _parse_args()
 
-    _logger.info(f"Preparing experiment {args.experiment}...")
+    logging.info(f"Preparing experiment {args.experiment}...")
 
     ckpt_path = os.path.join(args.checkpoint_dir, args.experiment)
     if not os.path.exists(ckpt_path):
@@ -138,7 +138,7 @@ def main():
     model = model_registry[args.model]()
     model = model.to(device)
 
-    _logger.info(f"{args.model} created, # of params: {sum([m.numel() for m in model.parameters()]):,d}.")
+    logging.info(f"{args.model} created, # of params: {sum([m.numel() for m in model.parameters()]):,d}.")
     optimizer = create_optimizer(params=model.parameters(), opt_name=args.opt, lr=args.lr,
                                  weight_decay=args.weight_decay)
 
@@ -200,9 +200,10 @@ def main():
                 lr_scheduler.step(val_loss)
 
             t_epoch = time.time() - start
-            _logger.info(
+            logging.info(
                 f"Epoch {epoch + 1} complete:\n\tTrain Acc: {train_acc:.2f}\n\tTest Acc: {val_acc:.2f}\n\t"
-                f"lr: {lr:.5f}\n\tTime: {t_epoch:.1f}s, ")
+                # f"lr: {lr:.5f}\n\tTime: {t_epoch:.1f}s")
+            )
             # TODO:
             #  Find better solution:
             #       val_loss and val_acc are returned as tensors--they shouldn't be!
@@ -211,7 +212,7 @@ def main():
 
             if best_acc is None or val_acc > best_acc:
                 if best_acc is not None:
-                    _logger.info(
+                    logging.info(
                         f"Accuracy increased ({0.00 if None else best_acc:.2f} -> {val_acc:.2f}). Saving model...")
                 torch.save({
                     'epoch': epoch,
@@ -276,11 +277,11 @@ def train_one_epoch(epoch: int, model: torch.nn.Module, loader: torch.utils.data
         epoch_loss += loss.item()
         epoch_acc += acc.item()
         if (batch_idx + 1) % args.log_interval == 0:
-            _logger.info(
+            logging.info(
                 f"Epoch: {epoch + 1} [{batch_idx + 1}/{num_batches} ({100 * batch_idx / last_idx:.0f}%)]     "
                 f"Loss: {loss:.3f} ({epoch_loss / (batch_idx + 1):.3f})    "
                 f"Acc: {acc:.3f} ({epoch_acc / (batch_idx + 1):.3f})    "
-                f"lr: {lr:.6f}"
+                # f"lr: {lr:.6f}"
             )
 
     return epoch_loss / num_batches, epoch_acc / num_batches, lr
