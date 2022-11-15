@@ -2,6 +2,7 @@ import argparse
 import json
 import logging
 import os.path
+import sys
 import time
 from typing import Tuple, Callable
 
@@ -172,11 +173,13 @@ def main():
 
     # Resume from checkpoint
     start_epoch = 0
+    best_acc = sys.float_info.max
     if args.resume:
         ckpt = torch.load(args.resume)
         model.load_state_dict(ckpt['model_state_dict'])
         optimizer.load_state_dict(ckpt['optimizer_state_dict'])
         start_epoch = ckpt['epoch']
+        best_acc = ckpt['acc']
 
     # Create scheduler
     lr_scheduler = create_scheduler(optimizer=optimizer, lr=args.lr, sched=args.sched, num_epochs=args.epochs,
@@ -191,20 +194,31 @@ def main():
         for epoch in range(start_epoch, args.epochs):
             start = time.time()
 
-            (train_loss, train_acc) = train_one_epoch(epoch, model, train_loader, optimizer, lr_scheduler,
+            (train_loss, train_acc, lr) = train_one_epoch(epoch, model, train_loader, optimizer, lr_scheduler,
                                                       train_loss_fn, args,
                                                       device)
             (val_loss, val_acc) = validate(model, val_loader, validate_loss_fn, args, device)
 
             _logger.info(
                 f"Epoch {epoch + 1} complete:\n\tTrain Acc: {train_acc:.2f}\n\tTest Acc: {val_acc}\n\t"
-                f"Time: {time.time() - start:.1f}s, ")
+                f"lr: {lr:.2f}n\tTime: {time.time() - start:.1f}s, ")
             # TODO:
             #  Find better solution:
             #       val_loss and val_acc are returned as tensors--they shouldn't be!
             metrics[epoch] = {'train_loss': train_loss, 'train_acc': train_acc, 'val_loss': val_loss.item(),
-                              'val_acc': val_acc.item()}
-            if lr_scheduler is not None and args.sched != 'custom':
+                              'val_acc': val_acc.item(), "lr": lr}
+
+            if val_acc > best_acc:
+                _logger.info(f"Accuracy increased ({best_acc:.2f} -> {val_acc:.2f})\tSaving model...")
+                torch.save({
+                    'epoch': epoch,
+                    'loss': val_loss,
+                    'acc': val_acc,
+                    'model_state_dict': model.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict(),
+                }, os.path.join(args.checkpoint_dir, args.experiment, f"{args.model}_{epoch}_{time.time()}.pt"))
+
+            if lr_scheduler is not None and args.sched != 'onecycle':
                 lr_scheduler.step(epoch + 1, args.eval_metric)
     except KeyboardInterrupt:
         pass
@@ -227,7 +241,7 @@ def accuracy(y_pred: Tensor, y: Tensor):
 def train_one_epoch(epoch: int, model: torch.nn.Module, loader: torch.utils.data.DataLoader,
                     optimizer: torch.optim.Optimizer, lr_scheduler: Callable, train_loss_fn: Callable, args,
                     device=torch.device('cuda')
-                    ) -> Tuple[float, float]:
+                    ) -> Tuple[float, float, float]:
     num_batches = len(loader)
     last_idx = num_batches - 1
     num_updates = epoch * num_batches
@@ -235,14 +249,14 @@ def train_one_epoch(epoch: int, model: torch.nn.Module, loader: torch.utils.data
     epoch_acc = 0.0
 
     model.train()
+    lr = None
 
     for batch_idx, (inputs, targets) in enumerate(loader):
         last_batch = batch_idx == last_idx
         inputs = inputs.to(device)
         targets = targets.to(device)
 
-        lr = None
-        if args.sched == 'custom':
+        if args.sched == 'onecycle':
             lr = lr_scheduler(epoch + (batch_idx + 1) / len(loader))
             optimizer.param_groups[0].update(lr=lr)
         else:
@@ -265,20 +279,13 @@ def train_one_epoch(epoch: int, model: torch.nn.Module, loader: torch.utils.data
 
         if (batch_idx + 1) % args.log_interval == 0:
             _logger.info(
-                f"Epoch: {epoch} [{batch_idx}/{num_batches} ({100 * batch_idx / last_idx:.0f}%)]     "
+                f"Epoch: {epoch + 1} [{batch_idx + 1}/{num_batches} ({100 * batch_idx / last_idx:.0f}%)]     "
                 f"Loss: {loss:.3f} ({epoch_loss / (batch_idx + 1):.3f})    "
                 f"Acc: {acc:.3f} ({epoch_acc / (batch_idx + 1):.3f})    "
                 f"lr: {lr:.6f}"
             )
 
-        if last_batch or (batch_idx + 1) % args.recovery_interval == 0:
-            torch.save({
-                'epoch': epoch,
-                'model_state_dict': model.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
-            }, os.path.join(args.checkpoint_dir, args.experiment, f"{epoch}_{batch_idx}.pt"))
-
-    return epoch_loss / num_batches, epoch_acc / num_batches
+    return epoch_loss / num_batches, epoch_acc / num_batches, lr
 
 
 def validate(model: torch.nn.Module, loader: torch.utils.data.DataLoader, loss_fn: Callable, args,

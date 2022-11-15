@@ -80,7 +80,7 @@ def validate(args):
             results[batch_idx] = {'test_loss': loss, 'test_acc': acc}
             if (batch_idx + 1) % args.log_interval == 0:
                 _logger.info(
-                    f"Test: [{batch_idx}/{num_batches}     "
+                    f"Test: [{batch_idx+1}/{num_batches}     "
                     f"Loss: {loss:.3f} ({test_loss / (batch_idx + 1):.3f})    "
                     f"Acc: {acc:.3f} ({test_acc / (batch_idx + 1):.3f})"
                 )

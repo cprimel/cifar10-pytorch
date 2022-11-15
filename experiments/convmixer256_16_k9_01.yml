@@ -10,7 +10,7 @@ opt: 'adamw'
 weight_decay: 0.0
 
 # Scheduler
-sched: 'custom'
+sched: 'onecycle'
 lr: 0.05
 epochs: 100
 

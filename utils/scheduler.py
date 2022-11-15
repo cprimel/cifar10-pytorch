@@ -8,7 +8,7 @@ import torch.optim
 """
 
 
-def epochLR(num_epochs: int, lr: float) -> Callable:
+def oneCycleLR(num_epochs: int, lr: float) -> Callable:
     return lambda t: np.interp([t], [0, num_epochs * 2 // 5, num_epochs * 4 // 5, num_epochs],
                                [0, lr, lr / 20.0, 0])[0]
 
@@ -25,6 +25,6 @@ def create_scheduler(optimizer: torch.optim.Optimizer, lr: float, sched: str = '
     elif sched == 'plateau':
         lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer, mode=plateau_mode,
                                                                   patience=patience)
-    elif sched == 'custom':
-        lr_scheduler = epochLR(num_epochs, lr)
+    elif sched == 'onecycle':
+        lr_scheduler = oneCycleLR(num_epochs, lr)
     return lr_scheduler
