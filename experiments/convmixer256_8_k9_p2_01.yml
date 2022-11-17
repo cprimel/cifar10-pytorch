@@ -31,4 +31,4 @@ checkpoint_hist: 5
 checkpoint_dir: 'ckpts'
 log_dir: 'logs'
 output: 'results'
-experiment: 'convmixer256_8_k5_p2_01'
+experiment: 'convmixer256_8_k9_p2_01'
