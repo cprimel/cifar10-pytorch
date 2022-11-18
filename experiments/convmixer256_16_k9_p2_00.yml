@@ -1,5 +1,5 @@
 # Model
-model: 'convmixer256_16_k9'
+model: 'convmixer256_16_k9_p2'
 resume: ''
 batch_size: 128 # max batch size to fit in colab gpu ram when k=8, d=16
 depth: 16
@@ -7,7 +7,7 @@ kernel_size: 9
 
 # Optimizer
 opt: 'adamw'
-weight_decay: 0.0
+weight_decay: 0.005
 
 # Scheduler
 sched: 'onecycle'
@@ -32,6 +32,4 @@ checkpoint_hist: 5
 checkpoint_dir: 'ckpts'
 log_dir: 'logs'
 output: 'results'
-experiment: 'convmixer256_16_k9_01'
-
-#
+experiment: 'convmixer256_16_k9_p2_00'
