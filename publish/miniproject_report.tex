@@ -1,0 +1,92 @@
+%File: formatting-instructions-latex-2023.tex
+%release 2023.0
+\documentclass[letterpaper]{article} % DO NOT CHANGE THIS
+\usepackage{aaai23}  % DO NOT CHANGE THIS
+\usepackage{times}  % DO NOT CHANGE THIS
+\usepackage{helvet}  % DO NOT CHANGE THIS
+\usepackage{courier}  % DO NOT CHANGE THIS
+\usepackage[hyphens]{url}  % DO NOT CHANGE THIS
+\usepackage{graphicx} % DO NOT CHANGE THIS
+\urlstyle{rm} % DO NOT CHANGE THIS
+\def\UrlFont{\rm}  % DO NOT CHANGE THIS
+\usepackage{natbib}  % DO NOT CHANGE THIS AND DO NOT ADD ANY OPTIONS TO IT
+\usepackage{caption} % DO NOT CHANGE THIS AND DO NOT ADD ANY OPTIONS TO IT
+\frenchspacing  % DO NOT CHANGE THIS
+\setlength{\pdfpagewidth}{8.5in}  % DO NOT CHANGE THIS
+\setlength{\pdfpageheight}{11in}  % DO NOT CHANGE THIS
+%
+% These are recommended to typeset algorithms but not required. See the subsubsection on algorithms. Remove them if you don't have algorithms in your paper.
+\usepackage{algorithm}
+\usepackage{algorithmic}
+
+%
+% These are are recommended to typeset listings but not required. See the subsubsection on listing. Remove this block if you don't have listings in your paper.
+\usepackage{newfloat}
+\usepackage{listings}
+\DeclareCaptionStyle{ruled}{labelfont=normalfont,labelsep=colon,strut=off} % DO NOT CHANGE THIS
+\lstset{%
+	basicstyle={\footnotesize\ttfamily},% footnotesize acceptable for monospace
+	numbers=left,numberstyle=\footnotesize,xleftmargin=2em,% show line numbers, remove this entire line if you don't want the numbers.
+	aboveskip=0pt,belowskip=0pt,%
+	showstringspaces=false,tabsize=2,breaklines=true}
+\floatstyle{ruled}
+\newfloat{listing}{tb}{lst}{}
+\floatname{listing}{Listing}
+%
+% Keep the \pdfinfo as shown here. There's no need
+% for you to add the /Title and /Author tags.
+\pdfinfo{
+/TemplateVersion (2023.1)
+}
+
+\setcounter{secnumdepth}{0} %May be changed to 1 or 2 if section numbers are desired.
+
+\title{CS-GY 6953 / ECE-GY 7123 Miniproject}
+\author {
+    % Authors
+    Casey Primel,\textsuperscript{\rm 1}
+    Chimnay Tompe, \textsuperscript{\rm 2}
+    Saikaran Nakka \textsuperscript{\rm 3}
+}
+\affiliations {
+    % Affiliations
+    \textsuperscript{\rm 1} Computer Science\\
+    \textsuperscript{\rm 2} Electrical Engineering\\
+    \textsuperscript{\rm 3} Computer Engineering\\
+    ctp219@nyu.edu, cst9314@nyu.edu, svn9710@nyu.edu
+}
+
+
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Convolutional neural networks and, most recently, transformer-based models dominate deep learning for computer vision. Models based on these architectures achieve high accuracy often at the expense of computational complexity, with even the tiniest examples rarely having less than 5 million parameters. For our miniproject, we experimented with a newer architecture, ConvMixer, a convolutional network with skip connections that incorporates aspects of transformers and other more recent architectures to outperform similarly sized models despite its relative simplicity. Our model achieves 95\% accuracy on CIFAR-10 classification after only 100 training epochs while using less than 12\% of our allocated 5 million parameter budget.
+\end{abstract}
+
+\section{Introduction}
+
+Depth is a significant factor for the success of artificial neural networks in computer vision tasks, but that significance has often confounded by the difficulties of training such deep networks. One such difficulty is degradation: as layers are added to a deep neural network one would naively expect model accuracy to improve because the model would be able to capture a better feature representation of the data; however, in practice, the opposite was observed. Mathematically, we can understand this in terms of our model $\mathcal{F}$ trying to approximate a true function $f^*$. If a new layer is added such that we move from $\mathcal{F}$ to $\mathcal{F}^\prime$, there is no guarantee that our new model gets us any closer to $f^*$. The only way to make this guarantee is if we can constrain $\mathcal{F}^\prime$ such that $\mathcal{F} \subset \mathcal{F}^\prime$.\footnote{This particular mathematical interpretation of degradation is drawn from \citet{zhang2021dive}, specifically Chapter 8.6.1.}
+
+
+\citet{he2015} proposed the introduction of a residual learning framework, often referred to as skip connections, as a means of constraining $\mathcal{F}^\prime$. Rather than each successive layer needing to learn a new mapping $f(\mathbf{x})$, where $\mathbf{x}$ is the output from the previous layer, we deliberately train the new layer towards the identity $f(\mathbf{x})=\mathbf{x}$ by carrying $\mathbf{x}$ forward and have our additional layer learn $g(\mathbf{x}) = 0$, where $f(\mathbf{x})= g(\mathbf{x}) + \mathbf{x}$. Because a skip connection realizes this through a single addition, the computational costs of the added complexity is miniscule. TODO: move to width and cardinality as parameters explored.
+
+
+
+\section{Methodology}
+
+\subsection{ConvMixer architecture}
+
+\subsection{Training setup}
+
+\subsection{Experiments}
+
+\section{Results}
+
+\appendix
+
+\bibliography{convmixer_project}
+
+\end{document}
