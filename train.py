@@ -297,7 +297,7 @@ def main():
             (train_loss, train_acc, lr) = train_one_epoch(epoch, model, train_loader, optimizer, lr_scheduler,
                                                           train_loss_fn, args,
                                                           device)
-            (val_loss, val_acc) = validate(model, val_loader, validate_loss_fn, args, device)
+            (val_loss, val_acc) = validate(model, val_loader, validate_loss_fn, device)
             if args.sched == 'plateau':
                 lr_scheduler.step(val_loss)
 
