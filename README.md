@@ -43,6 +43,7 @@ labels`{batch_index:{test_acc, predicted_labels, true_labels}}`
 
 ## TODOs
 
+* Add ability to feed config file to `test.py`
 * Modify `model_registry` so models for available architectures can be fully defined from the command line
 * Add option for ShakeDrop regularization
 * Add options for weight initialization
