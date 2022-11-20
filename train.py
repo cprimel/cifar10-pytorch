@@ -210,7 +210,6 @@ def train_one_epoch(epoch: int, model: torch.nn.Module, loader: torch.utils.data
 
         lr = lr_scheduler.get_last_lr()[0]  # for logging
 
-
         acc = accuracy(outputs, targets)
 
         optimizer.zero_grad()
@@ -307,9 +306,9 @@ def main():
 
     n_train = int(len(train_data) * args.val_ratio)
     n_val = len(train_data) - n_train
-    train_data, val_data = torch.utils.data.random_split(train_data, [n_train, n_val])
-
-    # TODO: Add optional mixup / cutmix augmentation
+    # Seed generator so that, if continuing from checkpoint, we do not have data leakage from the validation set
+    train_data, val_data = torch.utils.data.random_split(train_data, [n_train, n_val],
+                                                         generator=torch.Generator().manual_seed(2766521))
 
     # Create dataloaders w/augmentation pipeline
     train_loader = utils.create_loader(train_data, input_size=input_size, mean=mean, std=std,
