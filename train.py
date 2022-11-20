@@ -17,6 +17,7 @@ import os.path
 import time
 from typing import Tuple, Callable
 
+import numpy as np
 import torch
 import torch.utils.data
 import torchvision as torchvision
@@ -95,6 +96,10 @@ group.add_argument('--ra-m', type=float, default=0.0, metavar="RAM",
 group.add_argument('--erase', type=float, default=0.25, metavar="RE", help='Random erase probability (default: 0.25)')
 group.add_argument('--jitter', type=float, default=0.1, metavar="JITTER",
                    help='Color jitter probability (default: 0.1)')
+parser.add_argument('--beta', default=0.0, type=float,
+                    help='CutMix beta')
+parser.add_argument('--cutmix-prob', default=0.0, type=float,
+                    help='CutMix probability')
 
 # Misc
 group = parser.add_argument_group('Miscellaneous parameters')
@@ -129,6 +134,26 @@ def _parse_args():
     return args, args_text
 
 
+def rand_bbox(size, lam):
+    """CutMix regularization function."""
+    W = size[2]
+    H = size[3]
+    cut_rat = np.sqrt(1. - lam)
+    cut_w = int(W * cut_rat)
+    cut_h = int(H * cut_rat)
+
+    # uniform
+    cx = np.random.randint(W)
+    cy = np.random.randint(H)
+
+    bbx1 = np.clip(cx - cut_w // 2, 0, W)
+    bby1 = np.clip(cy - cut_h // 2, 0, H)
+    bbx2 = np.clip(cx + cut_w // 2, 0, W)
+    bby2 = np.clip(cy + cut_h // 2, 0, H)
+
+    return bbx1, bby1, bbx2, bby2
+
+
 def accuracy(y_pred: Tensor, y: Tensor):
     """Calculates accuracy."""
     top_pred = y_pred.argmax(1, keepdim=True)
@@ -159,13 +184,32 @@ def train_one_epoch(epoch: int, model: torch.nn.Module, loader: torch.utils.data
         inputs = inputs.to(device)
         targets = targets.to(device)
 
-        lr = lr_scheduler.get_last_lr()[0]  # for logging
-        optimizer.zero_grad()
+        # CutMix regularization
+        r = np.random.rand(1)
+        if args.beta > 0 and r < args.cutmix_prob:
+            # generate mixed sample
+            lam = np.random.beta(args.beta, args.beta)
+            rand_index = torch.randperm(inputs.size()[0]).cuda()
+            target_a = targets
+            target_b = targets[rand_index]
+            bbx1, bby1, bbx2, bby2 = rand_bbox(inputs.size(), lam)
+            inputs[:, :, bbx1:bbx2, bby1:bby2] = inputs[rand_index, :, bbx1:bbx2, bby1:bby2]
+            # adjust lambda to exactly match pixel ratio
+            lam = 1 - ((bbx2 - bbx1) * (bby2 - bby1) / (inputs.size()[-1] * inputs.size()[-2]))
+            # compute output
+            outputs = model(inputs)
+            loss = train_loss_fn(outputs, target_a) * lam + train_loss_fn(outputs, target_b) * (1. - lam)
+        else:
+            # compute output
+            outputs = model(inputs)
+            loss = train_loss_fn(outputs, targets)
 
-        outputs = model(inputs)
-        loss = train_loss_fn(outputs, targets)
+        lr = lr_scheduler.get_last_lr()[0]  # for logging
+
+
         acc = accuracy(outputs, targets)
 
+        optimizer.zero_grad()
         loss.backward()
         optimizer.step()
         # Call lr scheduler with appropriate arguments

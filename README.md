@@ -19,7 +19,7 @@ all you need to do is clone the repository and run the script:
 
 ```bash
 git clone https://github.com/cprimel/cautious-fiesta.git
-python cautious-fiesta/train.py --config experiments/convmixer256_8_default.yml --batch-size=512
+cd cautious-fiesta && python train.py --config experiments/convmixer256_8_default.yml --batch-size=512
 ```
 
 ## Outputs
@@ -34,7 +34,7 @@ provided, the values from the command line), a `.json` file containing the train
 log `{epoch_num: {train_loss, train_acc, val_loss, val_acc, last_lr, epoch_time}}`, and any saved checkpoints.
 
 `test.py` outputs a `.json` file containing the evaluation metrics and the list of predicted and true
-labels`{batch_index:{test_loss, test_acc, num_imgs_in_batch, batch_time, predicted_labels, true_labels}}`
+labels`{batch_index:{test_acc, predicted_labels, true_labels}}`
 
 ## TODOs
 

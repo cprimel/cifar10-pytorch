@@ -105,7 +105,7 @@ def validate(args):
 
         if results:
             data_dump = json.dumps(results)
-            f = open(os.path.join(args.logs, f"test_{time.time()}"), "w")
+            f = open(os.path.join(args.logs, args.model, f"test_{time.time()}"), "w")
             f.write(data_dump)
             f.close()
         return test_acc / m

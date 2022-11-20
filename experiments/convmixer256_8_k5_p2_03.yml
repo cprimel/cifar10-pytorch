@@ -1,0 +1,36 @@
+# Model
+model: 'convmixer256_8_k5_p2'
+resume: ''
+batch_size: 512
+kernel_size: 5
+
+# Optimizer
+opt: 'adamw'
+weight_decay: 0.005
+
+# Scheduler
+sched: 'onecycle'
+lr: 0.05
+epochs: 100
+
+
+# Aug + regularization
+hflip: 0.5
+vflip: 0.0
+scale: 1.0
+erase: 0.2
+jitter: 0.2
+rand_aug: True
+ra_n: 2
+ra_m: 12
+cutmix_prob: 0.5
+beta: 1.0
+
+# Misc.
+log_interval: 100
+recovery_interval: 100
+checkpoint_hist: 5
+checkpoint_dir: 'ckpts'
+log_dir: 'logs'
+output: 'results'
+experiment: 'convmixer256_8_k5_p2_02'
