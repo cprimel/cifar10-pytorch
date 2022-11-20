@@ -40,7 +40,6 @@ labels`{batch_index:{test_acc, predicted_labels, true_labels}}`
 
 * Modify `model_registry` so models for available architectures can be fully defined from the command line
 * Add option for ShakeDrop regularization
-* Add option for CutMix regularization
 * Add options for weight initialization
 * Add option for gradient clipping
 * Add support for `torch.amp`

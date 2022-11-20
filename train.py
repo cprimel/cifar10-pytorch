@@ -135,7 +135,11 @@ def _parse_args():
 
 
 def rand_bbox(size, lam):
-    """CutMix regularization function."""
+    """CutMix regularization function.
+
+    See https://github.com/clovaai/CutMix-PyTorch
+
+    """
     W = size[2]
     H = size[3]
     cut_rat = np.sqrt(1. - lam)
@@ -184,7 +188,7 @@ def train_one_epoch(epoch: int, model: torch.nn.Module, loader: torch.utils.data
         inputs = inputs.to(device)
         targets = targets.to(device)
 
-        # CutMix regularization
+        # CutMix regularization - See https://github.com/clovaai/CutMix-PyTorch
         r = np.random.rand(1)
         if args.beta > 0 and r < args.cutmix_prob:
             # generate mixed sample
