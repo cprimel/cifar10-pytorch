@@ -74,11 +74,10 @@ def validate(args):
     test_loader = utils.create_loader(test_data, input_size=input_size, mean=mean, std=std, batch_size=args.batch_size,
                                       is_training=False)
 
-
     model.eval()
     results = {}
-    test_loss = 0.0
-    test_acc = 0.0
+    test_acc = 0
+    m = 0
     num_batches = len(test_loader)
     with torch.no_grad():
         for batch_idx, (inputs, targets) in enumerate(test_loader):
@@ -89,20 +88,18 @@ def validate(args):
             outputs = model(inputs)
             end = time.time() - start
 
-            loss = criterion(outputs, targets)
+            criterion(outputs, targets)
             acc = accuracy(outputs.detach(), targets)
-            test_loss += loss
-            test_acc += acc
+            test_acc += (outputs.max(1)[1] == targets).sum().item()
+            m += targets.size(0)
 
-            results[batch_idx] = {'test_loss': loss.item(), 'test_acc': acc.item(), 'num_imgs_in_batch': outputs.size(),
-                                  'batch_time': end, 'predicted_labels': outputs.tolist()[0],
+            results[batch_idx] = {'test_acc': acc.item(), 'predicted_labels': outputs.tolist()[0],
                                   'true_labels': targets.tolist()[0]}
 
             if (batch_idx + 1) % args.log_interval == 0:
                 logging.info(
                     f"Test: [{batch_idx + 1}/{num_batches}     "
-                    f"Loss: {loss:.3f} ({test_loss / (batch_idx + 1):.3f})    "
-                    f"Acc: {acc:.3f} ({test_acc / (batch_idx + 1):.3f})     "
+                    f"Acc:  {test_acc / m:.3f}     "
                     f"Time: {end:.4f}"
                 )
 
@@ -111,7 +108,7 @@ def validate(args):
             f = open(os.path.join(args.logs, f"test_{time.time()}"), "w")
             f.write(data_dump)
             f.close()
-        return test_loss / num_batches, test_acc / num_batches
+        return test_acc / m
 
 
 def main():
@@ -120,8 +117,8 @@ def main():
     if not os.path.exists(args.logs):
         os.makedirs(args.logs)
 
-    test_loss, test_acc = validate(args)
-    logging.info(f"Results:\n\tLoss: {test_loss.item():.2f}\tAcc: {test_acc.item():.2f}")
+    test_acc = validate(args)
+    logging.info(f"Results:\n\tTest Acc: {test_acc:.3f}")
 
 
 if __name__ == '__main__':
