@@ -19,7 +19,12 @@ all you need to do is clone the repository and run the script:
 
 ```bash
 git clone https://github.com/cprimel/cautious-fiesta.git
-cd cautious-fiesta && python train.py --config experiments/convmixer256_8_default.yml --batch-size=512
+cd cautious-fiesta && python train.py --config experiments/convmixer256_8_k5_p2_00.yml --batch-size=512
+```
+
+To evaluate a model, similarly making sure to specify the correct model and experiment identifiers:
+```bash
+cd cautious-fiesta && python test.py --model=convmixer256_8_k5_p2 --experiment=convmixer256_8_k5_p2_00 --checkpoint=<path-to-checkpoint>
 ```
 
 ## Outputs

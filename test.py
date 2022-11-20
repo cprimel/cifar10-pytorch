@@ -22,6 +22,7 @@ logging.basicConfig(level=logging.INFO, format='%(message)s')
 parser = argparse.ArgumentParser(description="PyTorch CIFAR-10 Testing")
 parser.add_argument('--model', '-m', metavar='NAME', default='resnet10',
                     help='Model identifier (default: resnet10)')
+parser.add_argument('--experiment', default='', help='Name of experiment (default: None')
 parser.add_argument('--checkpoint', default='', type=str, metavar='CKPT_PATH',
                     help='Path to latest checkpoint (default: none)')
 parser.add_argument('--device', default='cuda', type=str, metavar="DEV",
@@ -105,7 +106,7 @@ def validate(args):
 
         if results:
             data_dump = json.dumps(results)
-            f = open(os.path.join(args.logs, args.model, f"test_{time.time()}"), "w")
+            f = open(os.path.join(args.logs, args.experiment, f"test_{time.time()}"), "w")
             f.write(data_dump)
             f.close()
         return test_acc / m
