@@ -1,11 +1,13 @@
+"""Model definitions for ConvMixer. See https://github.com/locuslab/convmixer.
+
+To make all models accessible to the training script, add the model identification and model definition to
+`model_registry` in `models/__init__.py`.
+"""
+
 from typing import Callable
 
 import torch.nn as nn
 from torch import Tensor
-
-"""
-    See https://github.com/locuslab/convmixer-cifar10/blob/main/train.py#L36
-"""
 
 
 class Residual(nn.Module):
@@ -48,6 +50,7 @@ def ConvMixer256_8_k5_p2():
 
 def ConvMixer256_8_k9_p1():
     return ConvMixer(depth=8, kernel_size=9, patch_size=1)
+
 
 def ConvMixer256_8_k9_p2():
     return ConvMixer(depth=8, kernel_size=9, patch_size=2)

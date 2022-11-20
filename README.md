@@ -1,35 +1,46 @@
+# PyTorch + CIFAR-10 scripts
+
+The repository contains a set of extensible scripts for training and evaluating PyTorch models on the CIFAR-10 image
+dataset. Heavily inspired by [timm](https://github.com/rwightman/pytorch-image-models).
+
+Currently available architectures:
+
+* ResNet
+* ResNeXt
+* ConvMixer
+
+The scripts can be extended by adding different architectures, optimization algorithms, learning rate schedulers, and
+data augmentations.
+
 ## Instructions
 
-In order to use, clone repo into your Colab notebook (`!git clone https://github.com/cprimel/cautious-fiesta.git`), then add the directory to your system path:
+All scripts can be run from the command line. Whether you are running the script locally or a hosted Jupyter notebook,
+all you need to do is clone the repository and run the script:
 
-```python
-import sys
-sys.path.insert(0, '/content/cautious-fiesta')
+```bash
+git clone https://github.com/cprimel/cautious-fiesta.git
+python cautious-fiesta/train.py --config experiments/convmixer256_8_default.yml --batch-size=512
 ```
 
-Now, one can simply run the train script with a predefined experiment or choose the model via commandline arguments:
+## Outputs
 
-```jupyterpython
-! cd cautious-fiesta && python train.py --config experiments/convmixer256_8_default.yml --batch-size=512
-```
+All scripts log information to standard output.
 
+`summarize.py` with argument`--save-graph=True` outputs a standard TensorFlow `Event` protocol buffer that can be
+ingested by TensorBoard for examining the models conceptual graph.
+
+`train.py` outputs a `.yml` file containing the final arguments (e.g., values from the passed config file or, if
+provided, the values from the command line), a `.json` file containing the training
+log `{epoch_num: {train_loss, train_acc, val_loss, val_acc, last_lr, epoch_time}}`, and any saved checkpoints.
+
+`test.py` outputs a `.json` file containing the evaluation metrics and the list of predicted and true
+labels`{batch_index:{test_loss, test_acc, num_imgs_in_batch, batch_time, predicted_labels, true_labels}}`
 
 ## TODOs
-* modify `model_registry` so models can be fully defined from the command line
-* Add ShakeDrop regularization
-* Add CutMix regularization
-* Add weight initialization options
 
-## Experiments
-
-All for 100 epochs.
-
-ConvMixer256/8
-1. `patch_size=2, kernel-size=5`
-* `kernel_size=5` (# of parameters = 591,882), basic data augmentation (`hflip=0.5`, `scale=1.0` (for RandomResizeCrop)) (# of parameters = 591,882)
-* `kernel_size=5`, basic data augmentation + ColorJitter(`jitter=0.2`), RandAugment(`ra_n=2, ra_m=12`), RandomErasing(`erase=0.2`)
-* `kernel_size=9` (# of params = 706,570): basic data augmentation (`hflip=0.5`, `scale=1.0` (for RandomResizeCrop)) 
-* `kernel_size=9` : basic data augmentation + ColorJitter(`jitter=0.2`), RandAugment(`ra_n=2, ra_m=12`), RandomErasing(`erase=0.2`)
-
-ConvMixer256/16
-* `kernel_size=9`, basic data augmentation + ColorJitter(`jitter=0.2`), RandAugment(`ra_n=2, ra_m=12`), RandomErasing(`erase=0.2`) (# of parameters = 1,409,034)
+* Modify `model_registry` so models for available architectures can be fully defined from the command line
+* Add option for ShakeDrop regularization
+* Add option for CutMix regularization
+* Add options for weight initialization
+* Add option for gradient clipping
+* Add support for `torch.amp`

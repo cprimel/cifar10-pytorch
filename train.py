@@ -1,3 +1,15 @@
+"""Extensible PyTorch NN training script for CIFAR-10 classification models.
+
+A command line script for training NN on the CIFAR-10 dataset. If a configuration file is passed, any other command line
+arguments will overwrite the defaults provided by the configuration file.
+
+A rewrite of timm, pared-down for use with CIFAR-10 image dataset. For original timm, see
+https://github.com/rwightman/pytorch-image-models.
+
+Typical usage:
+    $python train.py --config your-experiment-config.yml
+"""
+
 import argparse
 import json
 import logging
@@ -15,10 +27,6 @@ import utils
 from models import model_registry
 from utils import create_optimizer, create_scheduler
 
-"""
-    See https://github.com/rwightman/pytorch-image-models/blob/main/train.py.
-"""
-
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 
 config_parser = parser = argparse.ArgumentParser(description="PyTorch CIFAR-10 Training", add_help=False)
@@ -33,8 +41,8 @@ group.add_argument('--model', default='resnet10', type=str, metavar='MODEL',
                    help='Name of model to train (default: "resnet10")')
 group.add_argument('--resume', default='', type=str, metavar='PATH',
                    help='Resume full model and optimizer state from checkpoint (default: none)')
-group.add_argument('-b', '--batch-size', type=int, default=128, metavar='N',
-                   help='Input batch size for training (default: 128)')
+group.add_argument('-b', '--batch-size', type=int, default=512, metavar='N',
+                   help='Input batch size for training (default: 512)')
 
 # Optimizer parameters
 group = parser.add_argument_group('Optimizer parameters')
@@ -44,19 +52,19 @@ group.add_argument('--opt-eps', default=None, type=float, metavar='EPSILON',
                    help='Optimizer Epsilon (default: None, use opt default)')
 group.add_argument('--momentum', type=float, default=0.9, metavar='M',
                    help='Optimizer momentum (default: 0.9)')
-group.add_argument('--weight-decay', type=float, default=2e-5,
-                   help='weight decay (default: 2e-5)')
+group.add_argument('--weight-decay', type=float, default=5e-5, metavar="WD",
+                   help='Weight decay (default: 5e-5)')
 
 # Learning rate schedule parameters
 group = parser.add_argument_group('Learning rate schedule parameters')
-group.add_argument('--sched', type=str, default='cosine_warm', metavar='SCHEDULER',
-                   help='LR scheduler (default: "cosine_warm")')
+group.add_argument('--sched', type=str, default='onecycle', metavar='SCHEDULER',
+                   help='LR scheduler (default: "onecycle")')
 group.add_argument('--lr', type=float, default=0.01, metavar='LR',
-                   help='learning rate (default: 0.01`)')
+                   help='Learning rate (default: 0.01`)')
 group.add_argument('--min-lr', type=float, default=0.0, metavar='MINLR',
-                   help='minimum learning rate (default: 0.0)')
-group.add_argument('--epochs', type=int, default=300, metavar='N',
-                   help='number of epochs to train (default: 50)')
+                   help='Minimum learning rate--only used by some schedulers (default: 0.0)')
+group.add_argument('--epochs', type=int, default=300, metavar='ENUM',
+                   help='Number of epochs to train (default: 300)')
 group.add_argument('--decay-rate', '--dr', type=float, default=0.1, metavar='RATE',
                    help='LR decay rate (default: 0.1)')
 group.add_argument('--t-initial', type=int, default=200, metavar='T_0',
@@ -70,49 +78,142 @@ group.add_argument('--patience', type=int, default=10, metavar='PAT',
 
 # Augmentation & regularization parameters
 group = parser.add_argument_group('Augmentation and regularization parameters')
-group.add_argument('--val-ratio', type=float, default=0.9, help='ratio for train-validation split')
-group.add_argument('--hflip', type=float, default=0.5,
-                   help='Horizontal flip training aug probability')
-group.add_argument('--vflip', type=float, default=0.,
-                   help='Vertical flip training aug probability')
-group.add_argument('--scale', type=float, default=0.9, help='scale for random resizing')
-group.add_argument('--rand_aug', type=bool, default=False, help='toggle random augmentation')
-group.add_argument('--ra-n', type=float, default=0.0, help='number of random augmentation ops')
-group.add_argument('--ra-m', type=float, default=0.0, help='magnitude of random augmentation ops')
-group.add_argument('--erase', type=float, default=0.25, help='prob for random erasing')
-group.add_argument('--jitter', type=float, default=0.1, help='prob for color jitter')
+group.add_argument('--val-ratio', type=float, default=0.9, metavar="V_SPLIT",
+                   help='Ratio for train-validation split (default: 0.9')
+group.add_argument('--hflip', type=float, default=0.5, metavar="HF",
+                   help='Horizontal flip probability (default: 0.5)')
+group.add_argument('--vflip', type=float, default=0., metavar="VF",
+                   help='Vertical flip probability (default: 0.0)')
+group.add_argument('--scale', type=float, default=1.0, metavar="SCALE",
+                   help='Scale value for random resizing (default: 1.0)')
+group.add_argument('--rand_aug', type=bool, default=False, metavar="RA",
+                   help='Toggle random augmentation (default: False)')
+group.add_argument('--ra-n', type=int, default=0, metavar="RAN",
+                   help='Number of operations for random augmentation (default: 0)')
+group.add_argument('--ra-m', type=float, default=0.0, metavar="RAM",
+                   help='Magnitude of random augmentation operations (default: 0.0')
+group.add_argument('--erase', type=float, default=0.25, metavar="RE", help='Random erase probability (default: 0.25)')
+group.add_argument('--jitter', type=float, default=0.1, metavar="JITTER",
+                   help='Color jitter probability (default: 0.1)')
 
 # Misc
 group = parser.add_argument_group('Miscellaneous parameters')
-group.add_argument('--log-interval', type=int, default=50, metavar='N',
-                   help='how many batches to wait before logging training status')
-group.add_argument('--recovery-interval', type=int, default=0, metavar='N',
-                   help='how many batches to wait before writing recovery checkpoint')
-group.add_argument('--checkpoint-hist', type=int, default=10, metavar='N',
-                   help='number of checkpoints to keep (default: 10)')
-group.add_argument('--checkpoint-dir', default='checkpoints', type=str, metavar='PATH',
-                   help='path to checkpoints (default: checkpoints/)')
-group.add_argument('--log-dir', default='logs', type=str, metavar='PATH', help='path to training logs')
-group.add_argument('--output', default='results', type=str, metavar='PATH', help='path to output')
+group.add_argument('--log-interval', type=int, default=50, metavar='LOG_I',
+                   help='Batches to wait before logging training status')
+group.add_argument('--recovery-interval', type=int, default=0, metavar='REC_I',
+                   help='Batches to wait before writing recovery checkpoint')
+group.add_argument('--checkpoint-hist', type=int, default=10, metavar='NUM_CKPT',
+                   help='Checkpoints to keep (default: 10)')
+group.add_argument('--checkpoint-dir', default='checkpoints', type=str, metavar='CKPT_PATH',
+                   help='Path to checkpoints (default: checkpoints)')
+group.add_argument('--log-dir', default='logs', type=str, metavar='LOG_PATH',
+                   help='Path to training logs (default: "logs")')
 group.add_argument('--experiment', default='', type=str, metavar='NAME',
-                   help='name of train experiment, name of sub-folder for output')
+                   help='Experiment identifier, used to name log and checkpoint sub-folders (default: None)')
 
 
 def _parse_args():
-    # Do we have a config file to parse?
+    """Load config (if any) to override defaults, then parse command line arguments.
+    Returns:
+        tuple: dict and string version of arguments
+    """
     args_config, remaining = config_parser.parse_known_args()
     if args_config.config:
         with open(args_config.config, 'r') as f:
             cfg = yaml.safe_load(f)
             parser.set_defaults(**cfg)
 
-    # The main arg parser parses the rest of the args, the usual
-    # defaults will have been overridden if config file specified.
     args = parser.parse_args(remaining)
 
-    # Cache the args as a text string to save them in the output dir later
     args_text = yaml.safe_dump(args.__dict__, default_flow_style=False)
     return args, args_text
+
+
+def accuracy(y_pred: Tensor, y: Tensor):
+    """Calculates accuracy."""
+    top_pred = y_pred.argmax(1, keepdim=True)
+    correct = top_pred.eq(y.view_as(top_pred)).sum()
+    acc = correct.float() / y.shape[0]
+    return acc
+
+
+def train_one_epoch(epoch: int, model: torch.nn.Module, loader: torch.utils.data.DataLoader,
+                    optimizer: torch.optim.Optimizer, lr_scheduler: Callable, train_loss_fn: Callable, args,
+                    device=torch.device('cuda')
+                    ) -> Tuple[float, float, float]:
+    """Trains model for a single epoch.
+
+    Returns:
+        tuple: loss, accuracy
+    """
+    num_batches = len(loader)
+    last_idx = num_batches - 1
+    num_updates = epoch * num_batches
+    epoch_loss = 0.0
+    epoch_acc = 0.0
+
+    model.train()
+    lr = None
+
+    for batch_idx, (inputs, targets) in enumerate(loader):
+        inputs = inputs.to(device)
+        targets = targets.to(device)
+
+        lr = lr_scheduler.get_last_lr()[0]  # for logging
+        optimizer.zero_grad()
+
+        outputs = model(inputs)
+        loss = train_loss_fn(outputs, targets)
+        acc = accuracy(outputs, targets)
+
+        loss.backward()
+        optimizer.step()
+        # Call lr scheduler with appropriate arguments
+        if args.sched == 'onecycle':
+            lr_scheduler.step()
+        elif args.sched == 'cosine_warm':
+            lr_scheduler.step(epoch + batch_idx / num_batches)
+        num_updates += 1
+
+        epoch_loss += loss.item()
+        epoch_acc += acc.item()
+        if (batch_idx + 1) % args.log_interval == 0:
+            logging.info(
+                f"Epoch: {epoch + 1} [{batch_idx + 1}/{num_batches} ({100 * batch_idx / last_idx:.0f}%)]     "
+                f"Loss: {loss:.3f} ({epoch_loss / (batch_idx + 1):.3f})    "
+                f"Acc: {acc:.3f} ({epoch_acc / (batch_idx + 1):.3f})    "
+                f"lr: {lr:.6f}"
+            )
+
+    return epoch_loss / num_batches, epoch_acc / num_batches, lr
+
+
+def validate(model: torch.nn.Module, loader: torch.utils.data.DataLoader, loss_fn: Callable,
+             device=torch.device('cuda')) -> Tuple[float, float]:
+    """Model validation.
+
+    Returns:
+        tuple: (loss, accuracy)
+    """
+    model.eval()
+    num_batches = len(loader)
+    last_idx = len(loader) - 1
+    val_loss = 0.0
+    val_acc = 0.0
+    with torch.no_grad():
+        for batch_idx, (inputs, targets) in enumerate(loader):
+            inputs = inputs.to(device)
+            targets = targets.to(device)
+
+            outputs = model(inputs)
+
+            loss = loss_fn(outputs, targets)
+            acc = accuracy(outputs, targets)
+
+            val_loss += loss
+            val_acc += acc
+
+    return val_loss / num_batches, val_acc / num_batches
 
 
 def main():
@@ -145,13 +246,16 @@ def main():
     train_loss_fn = torch.nn.CrossEntropyLoss().to(device)
     validate_loss_fn = torch.nn.CrossEntropyLoss().to(device)
 
-    # Create train and test datasets
+    # Create training and validation datasets
     ROOT = '.data'
     train_data = torchvision.datasets.CIFAR10(ROOT,
                                               train=True,
                                               download=True)
+
+    # CIFAR-10 statistics
     mean = (0.4914, 0.4822, 0.4465)
     std = (0.2471, 0.2435, 0.2616)
+    input_size = (3, 32, 32)
 
     n_train = int(len(train_data) * args.val_ratio)
     n_val = len(train_data) - n_train
@@ -160,8 +264,6 @@ def main():
     # TODO: Add optional mixup / cutmix augmentation
 
     # Create dataloaders w/augmentation pipeline
-    input_size = (3, 32, 32)
-
     train_loader = utils.create_loader(train_data, input_size=input_size, mean=mean, std=std,
                                        batch_size=args.batch_size, is_training=True, rand_aug=args.rand_aug,
                                        ra_n=args.ra_n, ra_m=args.ra_m, jitter=args.jitter, scale=args.scale,
@@ -169,7 +271,7 @@ def main():
     val_loader = utils.create_loader(val_data, input_size=input_size, mean=mean, std=std, batch_size=args.batch_size,
                                      is_training=False)
 
-    # Resume from checkpoint
+    # Resume from checkpoint, if provided
     start_epoch = 0
     best_acc = None
     if args.resume:
@@ -227,87 +329,12 @@ def main():
     except KeyboardInterrupt:
         pass
 
-    # dump loss and accuracy metrics to json
+    # Dump loss and accuracy metrics to json
     if metrics:
         data_dump = json.dumps(metrics)
         f = open(os.path.join(log_path, f"train_{time.time()}"), "w")
         f.write(data_dump)
         f.close()
-
-
-def accuracy(y_pred: Tensor, y: Tensor):
-    top_pred = y_pred.argmax(1, keepdim=True)
-    correct = top_pred.eq(y.view_as(top_pred)).sum()
-    acc = correct.float() / y.shape[0]
-    return acc
-
-
-def train_one_epoch(epoch: int, model: torch.nn.Module, loader: torch.utils.data.DataLoader,
-                    optimizer: torch.optim.Optimizer, lr_scheduler: Callable, train_loss_fn: Callable, args,
-                    device=torch.device('cuda')
-                    ) -> Tuple[float, float, float]:
-    num_batches = len(loader)
-    last_idx = num_batches - 1
-    num_updates = epoch * num_batches
-    epoch_loss = 0.0
-    epoch_acc = 0.0
-
-    model.train()
-    lr = None
-
-    for batch_idx, (inputs, targets) in enumerate(loader):
-        inputs = inputs.to(device)
-        targets = targets.to(device)
-
-        lr = lr_scheduler.get_last_lr()[0]
-        optimizer.zero_grad()
-
-        outputs = model(inputs)
-        loss = train_loss_fn(outputs, targets)
-        acc = accuracy(outputs, targets)
-
-        loss.backward()
-        optimizer.step()
-        if args.sched == 'onecycle':
-            lr_scheduler.step()
-        elif args.sched == 'cosine_warm':
-            lr_scheduler.step(epoch + batch_idx / num_batches)
-        num_updates += 1
-
-        epoch_loss += loss.item()
-        epoch_acc += acc.item()
-        if (batch_idx + 1) % args.log_interval == 0:
-            logging.info(
-                f"Epoch: {epoch + 1} [{batch_idx + 1}/{num_batches} ({100 * batch_idx / last_idx:.0f}%)]     "
-                f"Loss: {loss:.3f} ({epoch_loss / (batch_idx + 1):.3f})    "
-                f"Acc: {acc:.3f} ({epoch_acc / (batch_idx + 1):.3f})    "
-                f"lr: {lr:.6f}"
-            )
-
-    return epoch_loss / num_batches, epoch_acc / num_batches, lr
-
-
-def validate(model: torch.nn.Module, loader: torch.utils.data.DataLoader, loss_fn: Callable, args,
-             device=torch.device('cuda')) -> Tuple[float, float]:
-    model.eval()
-    num_batches = len(loader)
-    last_idx = len(loader) - 1
-    val_loss = 0.0
-    val_acc = 0.0
-    with torch.no_grad():
-        for batch_idx, (inputs, targets) in enumerate(loader):
-            inputs = inputs.to(device)
-            targets = targets.to(device)
-
-            outputs = model(inputs)
-
-            loss = loss_fn(outputs, targets)
-            acc = accuracy(outputs, targets)
-
-            val_loss += loss
-            val_acc += acc
-
-    return val_loss / num_batches, val_acc / num_batches
 
 
 if __name__ == '__main__':

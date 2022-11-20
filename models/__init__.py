@@ -1,10 +1,15 @@
+"""Model registry.
+
+Key:value pairs for calling models via command line arguments in the training script. Key must match the model
+identifier passed via the experiment config file or command line argument. Value must match the name of the function
+where the model is defined.
+"""
+
 from .convmixer import ConvMixer256_8_k5_p1, ConvMixer256_8_k9_p1, ConvMixer256_16_k9_p2, ConvMixer256_8_k5_p2, \
     ConvMixer256_8_k5_p1, ConvMixer256_8_k9_p2
 from .resnet import ResNet10, ResNeXt10_32_2d
 
-"""
-    [key] = cmd line arg: [value] = func
-"""
+
 model_registry = {
     "resnet10": ResNet10,
     "resnext10_32_2d": ResNeXt10_32_2d,

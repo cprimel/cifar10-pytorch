@@ -1,6 +1,14 @@
-# TODO: Script for testing model
+"""PyTorch NN testing script for CIFAR-10 classification models.
+
+
+Typical usage:
+    $python test.py --model=<model_name> --checkpoint=<path-to-checkpoint> --logs=<path-to-save-logs>
+"""
 import argparse
+import json
 import logging
+import os
+import time
 
 import torch
 import torchvision
@@ -13,21 +21,21 @@ logging.basicConfig(level=logging.INFO, format='%(message)s')
 
 parser = argparse.ArgumentParser(description="PyTorch CIFAR-10 Testing")
 parser.add_argument('--model', '-m', metavar='NAME', default='resnet10',
-                    help='model architecture (default: resnet10)')
-parser.add_argument('--checkpoint', default='', type=str, metavar='PATH',
-                    help='path to latest checkpoint (default: none)')
-
-parser.add_argument('--device', default='cuda', type=str,
-                    help="Device (accelerator) to use.")
+                    help='Model identifier (default: resnet10)')
+parser.add_argument('--checkpoint', default='', type=str, metavar='CKPT_PATH',
+                    help='Path to latest checkpoint (default: none)')
+parser.add_argument('--device', default='cuda', type=str, metavar="DEV",
+                    help='Device to use (default: "cuda".')
 parser.add_argument('-b', '--batch-size', default=256, type=int,
-                    metavar='N', help='mini-batch size (default: 256)')
+                    metavar='N', help='Batch size (default: 256)')
 parser.add_argument('--log-interval', default=10, type=int,
-                    metavar='N', help='batch logging frequency (default: 10)')
-parser.add_argument('--results-file', default='', type=str, metavar='FILENAME',
-                    help='Output csv file for validation results (summary)')
+                    metavar='LOG_I', help='Batch logging frequency (default: 10)')
+parser.add_argument('--logs', default='', type=str, metavar="LOG_PATH",
+                    help='Path to logs (default: None)')
 
 
 def accuracy(y_pred: Tensor, y: Tensor):
+    """Calculates accuracy."""
     top_pred = y_pred.argmax(1, keepdim=True)
     correct = top_pred.eq(y.view_as(top_pred)).sum()
     acc = correct.float() / y.shape[0]
@@ -36,6 +44,11 @@ def accuracy(y_pred: Tensor, y: Tensor):
 
 # device
 def validate(args):
+    """
+
+    Returns:
+        tuple: loss, accuracy, time
+    """
     device = torch.device(args.device)
 
     # Load model
@@ -68,30 +81,41 @@ def validate(args):
     num_batches = len(test_loader)
     with torch.no_grad():
         for batch_idx, (inputs, targets) in enumerate(test_loader):
+            start = time.time()
             inputs = inputs.to(device)
             targets = targets.to(device)
 
             outputs = model(inputs)
+            end = time.time() - start
 
             loss = criterion(outputs, targets)
             acc = accuracy(outputs.detach(), targets)
             test_loss += loss
             test_acc += acc
 
-            results[batch_idx] = {'test_loss': loss, 'test_acc': acc}
+            results[batch_idx] = {'test_loss': loss, 'test_acc': acc, 'num_imgs_in_batch': outputs.size(),
+                                  'batch_time': end, 'predicted_labels': outputs, 'true_labels': targets}
             if (batch_idx + 1) % args.log_interval == 0:
                 logging.info(
                     f"Test: [{batch_idx + 1}/{num_batches}     "
                     f"Loss: {loss:.3f} ({test_loss / (batch_idx + 1):.3f})    "
                     f"Acc: {acc:.3f} ({test_acc / (batch_idx + 1):.3f})"
+                    f"Time: {end:.4f}"
                 )
 
+        if results:
+            data_dump = json.dumps(results)
+            f = open(os.path.join(args.logs, f"test_{time.time()}"), "w")
+            f.write(data_dump)
+            f.close()
         return test_loss / num_batches, test_acc / num_batches
 
 
 def main():
-    utils.setup_default_logging()
     args = parser.parse_args()
+
+    if not os.path.exists(args.logs):
+        os.makedirs(args.logs)
 
     test_loss, test_acc = validate(args)
     logging.info(f"Results:\n\tLoss: {test_loss.item():.2f}\tAcc: {test_acc.item():.2f}")

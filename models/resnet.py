@@ -1,3 +1,9 @@
+"""Model definitions for ResNet, Wide ResNet and ResNeXt.
+
+To make all models accessible to the training script, add the model identification and model definition to
+`model_registry` in `models/__init__.py`.
+"""
+
 from typing import Union, Type, List
 
 import torch

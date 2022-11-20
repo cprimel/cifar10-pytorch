@@ -1,16 +1,12 @@
-from typing import Callable
+"""Learning rate schedulers.
 
-import numpy as np
+Currently available schedulers:
+    * CosineAnnealingWarmRestarts
+    * ReduceLROnPlateau
+    * OneCycleLR
+"""
+
 import torch.optim
-
-"""
-    Wrapper for scheduler so that it has a step_update funciton.
-"""
-
-
-def oneCycleLR(num_epochs: int, lr: float) -> Callable:
-    return lambda t: np.interp([t], [0, num_epochs * 2 // 5, num_epochs * 4 // 5, num_epochs],
-                               [0, lr, lr / 20.0, 0])[0]
 
 
 def create_scheduler(optimizer: torch.optim.Optimizer, lr: float, sched: str = 'cosine_warm', num_epochs: int = 300,

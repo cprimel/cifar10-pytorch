@@ -1,3 +1,12 @@
+"""Image set dataloaders.
+
+For reasons, the PyTorch utility `random_split` returns Subset rather than Dataset. The `Dataset` class below is
+used to "revert" the given Subset into a subclass of Dataset.
+
+Typical usage:
+    loader = create_loader(dataset, input_size, data_mean, data_std, is_training=True)
+"""
+
 from typing import Tuple
 
 import torch.utils.data
@@ -6,6 +15,8 @@ from .transforms import create_transform
 
 
 class Dataset(torch.utils.data.Dataset):
+    """Class for converting subset back to dataset."""
+
     def __init__(self, subset, transform=None):
         self.subset = subset
         self.transform = transform
@@ -25,6 +36,11 @@ def create_loader(dataset, input_size, mean: Tuple[float, float, float], std: Tu
                   no_aug: bool = False, hflip: float = 0.5, vflip: float = 0.0,
                   crop_pct: float = 0.0, rand_aug: bool = False, ra_n: int = 1, ra_m: int = 8, jitter: float = 0.0,
                   scale: float = 0.9, prob_erase: float = 0.0) -> torch.utils.data.DataLoader:
+    """Create dataloader from dataset or data subset.
+
+    Returns:
+        Dataloader: provides an iterable for the dataset with given parameters for augmentation
+    """
     if isinstance(dataset, torch.utils.data.Subset):
         dataset = Dataset(dataset)
     dataset.transform = create_transform(input_size=input_size, mean=mean, std=std, is_training=is_training,

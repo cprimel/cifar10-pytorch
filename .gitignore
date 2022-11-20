@@ -5,3 +5,14 @@
 
 ckpt_test/
 log_test/
+publish/*.aux
+publish/*.bbl
+publish/*.blg
+publish/*.fdb_latexmk
+publish/*.log
+publish/*.synctex.gz
+publish/*.fls
+publish/*.pdf
+
+
+
