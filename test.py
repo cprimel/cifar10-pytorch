@@ -74,10 +74,11 @@ def validate(args):
     test_loader = utils.create_loader(test_data, input_size=input_size, mean=mean, std=std, batch_size=args.batch_size,
                                       is_training=False)
 
+
     model.eval()
+    results = {}
     test_loss = 0.0
     test_acc = 0.0
-    results = {}
     num_batches = len(test_loader)
     with torch.no_grad():
         for batch_idx, (inputs, targets) in enumerate(test_loader):
@@ -93,13 +94,15 @@ def validate(args):
             test_loss += loss
             test_acc += acc
 
-            results[batch_idx] = {'test_loss': loss, 'test_acc': acc, 'num_imgs_in_batch': outputs.size(),
-                                  'batch_time': end, 'predicted_labels': outputs, 'true_labels': targets}
+            results[batch_idx] = {'test_loss': loss.item(), 'test_acc': acc.item(), 'num_imgs_in_batch': outputs.size(),
+                                  'batch_time': end, 'predicted_labels': outputs.tolist()[0],
+                                  'true_labels': targets.tolist()[0]}
+
             if (batch_idx + 1) % args.log_interval == 0:
                 logging.info(
                     f"Test: [{batch_idx + 1}/{num_batches}     "
                     f"Loss: {loss:.3f} ({test_loss / (batch_idx + 1):.3f})    "
-                    f"Acc: {acc:.3f} ({test_acc / (batch_idx + 1):.3f})"
+                    f"Acc: {acc:.3f} ({test_acc / (batch_idx + 1):.3f})     "
                     f"Time: {end:.4f}"
                 )
 
