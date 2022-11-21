@@ -148,8 +148,7 @@ class ResNet(nn.Module):
 
     def _make_layer(self, block: Type[Union[ResBlock, Bottleneck]], out_channels: int, blocks: int,
                     stride: int = 1) -> nn.Sequential:
-        layers = []
-        layers.append(block(self.in_channels, out_channels, stride, self.base_width, self.groups))
+        layers = [block(self.in_channels, out_channels, stride, self.base_width, self.groups)]
         self.in_channels = out_channels * block.expansion
         for _ in range(1, blocks):
             layers.append(block(self.in_channels, out_channels, stride, base_width=self.base_width, groups=self.groups))
