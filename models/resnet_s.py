@@ -58,8 +58,6 @@ class BasicBlock(nn.Module):
         out = self.relu(out)
         out = self.conv2(out)
         out = self.bn2(out)
-        print(f"{out.size()}, {x.size()}")
-
         out += self.shortcut(x)
         return out
 
