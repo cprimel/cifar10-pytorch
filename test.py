@@ -90,11 +90,10 @@ def validate(args):
             end = time.time() - start
 
             criterion(outputs, targets)
-            acc = accuracy(outputs.detach(), targets)
             test_acc += (outputs.max(1)[1] == targets).sum().item()
             m += targets.size(0)
 
-            results[batch_idx] = {'test_acc': acc.item(), 'predicted_labels': outputs.tolist()[0],
+            results[batch_idx] = {'test_acc': test_acc.item(), 'predicted_labels': outputs.tolist()[0],
                                   'true_labels': targets.tolist()[0]}
 
             if (batch_idx + 1) % args.log_interval == 0:
