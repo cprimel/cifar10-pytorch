@@ -1,3 +1,17 @@
+# CS-GY 6953 / ECE-GY 7123 Miniproject
+
+Convolutional neural networks and, most recently, transformer-based models dominate deep learning for computer vision.
+Models based on these architectures achieve high accuracy often at the expense of computational complexity, with even
+the tiniest examples rarely having less than 5 million parameters. For our miniproject, we experimented with a newer
+architecture, ConvMixer, a convolutional network with skip connections that incorporates aspects of transformers and
+other more recent architectures to outperform similarly sized models despite its relative simplicity. Our model achieves
+94.3% accuracy on CIFAR-10 classification after 100 training epochs and 95.0% after 200 epochs while using less than 12%
+of our allocated 5 million parameter budget.
+
+You can find notebooks that show how to train, test and analyze experiments using this repository under `examples/`. The
+notebook `final_results.ipynb` can be used to reproduce our final results from the model checkpoints saved
+in `saved_models/`.
+
 # PyTorch + CIFAR-10 scripts
 
 The repository contains a set of extensible scripts for training and evaluating PyTorch models on the CIFAR-10 image
