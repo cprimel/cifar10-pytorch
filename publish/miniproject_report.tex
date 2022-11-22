@@ -66,7 +66,7 @@
 \maketitle
 
 \begin{abstract}
-Convolutional neural networks and, most recently, transformer-based models dominate deep learning for computer vision. Models based on these architectures achieve high accuracy often at the expense of computational complexity, with even the tiniest examples rarely having less than 5 million parameters. For our miniproject, we experimented with a newer architecture, ConvMixer, a convolutional network with skip connections that incorporates aspects of transformers and other more recent architectures to outperform similarly sized models despite its relative simplicity. Our model achieves 94.3\% accuracy on CIFAR-10 classification after 100 training epochs while using less than 12\% of our allocated 5 million parameter budget. Our code is available at \url{https://github.com/cprimel/cautious-fiesta}.
+Convolutional neural networks and, most recently, transformer-based models dominate deep learning for computer vision. Models based on these architectures achieve high accuracy often at the expense of computational complexity, with even the tiniest examples rarely having less than 5 million parameters. For our miniproject, we experimented with a newer architecture, ConvMixer, a convolutional network with skip connections that incorporates aspects of transformers and other more recent architectures to outperform similarly sized models despite its relative simplicity. Our model achieves 94.3\% accuracy on CIFAR-10 classification after 100 training epochs and 95.0\% after 200 epochs while using less than 12\% of our allocated 5 million parameter budget. Our code is available at \url{https://github.com/cprimel/cautious-fiesta}.
 \end{abstract}
 
 \section{Introduction}
@@ -83,36 +83,34 @@ The following report describes our experiments with applying the ConvMixer archi
 
 The choice of architecture was primarily driven by the goal of maximizing model performance while minimizing the number of parameters. Initial explorations showed that a typical small architecture, e.g., ResNet10, clock in at just under the proscribed limit of 5 million parameters and could achieve well over the required 80\% baseline with standard regularization. In fact, tiny architectures were able of performing just as well if not better on a small dataset like CIFAR-10. For instance, the 3-layer\footnote{\citet{He2015} use the term layer to refer both to the convolution operator and the set of residual blocks that share the same output width. Here we use the latter to distinguish between the typical 4-layer and the simplified 3-layer architecture for CIFAR-10.} ResNet described by \citet{He2015} for use on CIFAR-10 were capable of 91\% and 93\% with only .27 and 1.7 million parameters, respectively. However, most research only treats CIFAR-10 as a secondary objective with models being trained on and primarily benchmarked against the ImageNet or the proprietary JFT-300M dataset. A good example of this is ViT architecture presented by \citet{Dosovitskiy2020} which achieves over 98\% on CIFAR-10 after pre-training at the cost of 86 million parameters.
 
-
 \subsection{ConvMixer architecture}
 
+The ConvMixer architecture is simple: It has 4 parameters: height ($h$), depth ($d$), kernel size ($k$) and patch size ($p$). The first layer is the patch embedding layer, which is implemented as a convolution with $h$ output channels and stride and kernel size both of $p$. This is followed by a series of $d$ blocks, each of which consists of a depthwise or grouped convolution with $h$ groups followed by a $1 \times 1$ pointwise convolution. Each convolution is followed by an activation function, either ReLU or GeLU, and batch normalization. A skip connection is applied across the depthwise convolution and, optionally, over the pointwise convolution as well. A global pooling is performed after the last block and a feature vector of size $h$ is passed to the final fully-connected layer.
 
-
-\todo{describe architecture}
-
-\todo{add diagram}
+\begin{figure*}
+    \includegraphics[width=\linewidth]{convmixer_diagram.png}
+    \caption{A diagram depicting the ConvMixer architecture \citep{trockman2022patches}.}
+\end{figure*}
 
 Our implementation is drawn directly from \citet{trockman2022patches}, in particular the "more readable" PyTorch implementation presented in Appendix D. 
 
 \subsection{Training setup}
 
-Training and testing were performed via command line scripts. The training script is heavily inspired by \verb|timm| \citep{rw2019timm} the principle differences being that we aimed to only use built-in PyTorch functions where they were available, a simplified model registry structure and the focus on CIFAR-10 dataset. 
-
-Each experiment is defined in a YAML file and fed to the training script. Training checkpoints are saved only if the accuracy of the epoch is better than all previous epochs and the training log with metrics for each epoch are output as a JSON file allowing for post-run analysis. Tests are run on the best checkpoint from training and a log containing the predicted and true labels for all test images is saved to JSON.
-
-All models were trained and tested in Google Colab-hosted Jupyter notebooks running on a GPU instance (running a 16 GB Tesla T4).
+Training and testing were performed via command line scripts. The training script is heavily inspired by \verb|timm| \citep{rw2019timm} the principle differences being that we aimed to only use built-in PyTorch functions where they were available, a simplified model registry structure and the focus on CIFAR-10 dataset. Each experiment is defined in a YAML file and fed to the training script. Training checkpoints are saved only if the accuracy of the epoch is better than all previous epochs and the training log with metrics for each epoch are output as a JSON file allowing for post-run analysis. Tests are run on the best checkpoint from training and a log containing the predicted and true labels for all test images is saved to JSON. All models were trained and tested in Google Colab-hosted Jupyter notebooks running on a GPU instance (running a 16 GB Tesla T4).
 
 \subsection{Experiments}
 
-The results of the CIFAR-10 ablation study performed by \citet{trockman2022patches} with the ConvMixer architecture provided an initial basis for choosing the model parameters and regularization techniques we applied in our experiments. \citet{trockman2022patches} show that increasing kernel sizes result in more parameters with decreasing gains to accuracy while larger patch sizes lead to rapid decreases in accuracy. These empirical results make sense given the small input size. We focused on ConvMixer256/8 alternating between kernel sizes of 5 and 9 and patch sizes of 1 and 2. We also ran an experiment doubling the depth of the network to 16, i.e., ConvMixer256/16, to see exactly how much training behavior changed with increased depth; however, we decided that the increased training time and, thus, our inability to iterate further experiments on the model in a timely fashion, far outweighed any accuracy increases we could squeeze out of it.
+The results of the CIFAR-10 ablation study performed by \citet{trockman2022patches} with the ConvMixer architecture provided an initial basis for choosing the model parameters and regularization techniques we applied in our experiments. \citet{trockman2022patches} show that increasing kernel sizes result in more parameters with decreasing gains to accuracy while larger patch sizes lead to rapid decreases in accuracy. These empirical results make sense given the small input size. We focused on ConvMixer256/8 alternating between kernel sizes $k=5$ and $k=9$ and patch sizes $p=1$ and $p=2$. We also ran an experiment doubling the depth of the network to $d=16$ to see whether training behavior differed significantly with increased depth; however, we decided that the increased training time and, thus, our inability to iterate further experiments on the model in a timely fashion, far outweighed any accuracy increases we could squeeze out of it.
 
-Our results differ likely in large part to the fact that we use the PyTorch implementation for nearly all the relevant model components (e.g., optimization algorithms) whereas \citet{trockman2022patches} use those provided in \verb|timm|.
+For each variation of the architecture mentioned above, save for $d=16$, we ran three experiments training the model for 100 epochs with different regularization strategies. For all experiments, we used the AdamW optimization algorithm \citep{Loshchilov2017} with weight decay $wd=0.005$ and a cyclical learning rate schedule \citep{Smith2017} with the maximum learning rate $max_lr=0.05$. The first experiment for each variation of the architecture uses a baseline data augmentation of a random horizontal flip with probability of $p=0.5$. The second experiment adds PyTorch's \verb|RandAugment| \citep{Cubuk2019}. And, the third experiment adds \verb|ColorJitter| and \verb|RandErase|\citep{Zhong2017}. The third experiment aligns with the regularization strategy adopted by \citet{trockman2022patches}. In what follows, we will refer to these as augmentation level 0, 1 and 2 for convenience.
+
+The best results are shown in Table 1 and were obtained for each architecture variation with augmentation level 2, except in the case of $d=16$ which was only run with augmentation level 0. Our results differ slighlty from \citet{trockman2022patches} likely in large part to the fact that we use the PyTorch implementation for nearly all the relevant model components (e.g., optimization algorithms) whereas they use the implementations provided in \verb|timm|.
 
 \begin{table}
     \begin{tabular}{|c|c|c|c|c|}
         \hline
         \hline 
-        Depth & Kernel size & Patch size & Parameters & Best acc. (\%) \\
+        Depth $d$& Kernel size $k$& Patch size $p$& Parameters & Best acc. (\%) \\
         \hline
         8 & 5 & 1 & 591,882 & 94.1 \\
         8 & 5 & 2 & 594,186 & 94.5 \\
@@ -126,20 +124,28 @@ Our results differ likely in large part to the fact that we use the PyTorch impl
 
 \begin{figure}
     \includegraphics[width=\linewidth]{training_k5p2.png}
-    \caption{Comparison of model training metrics for ConvMixer256/8 (kernel size=5, patch size=2) at different augmentation levels.}
+    \caption{Comparison of model training metrics for ConvMixer256/8 (kernel size $k=5$, patch size$p=2$) at different augmentation levels.}
+  \end{figure}
+
+Our experiments show that regularization strategies that make use of increasingly varied data augmentations were more important than the specific architecture chosen. With augmentation level 0, models tended to overfit the training data, e.g., Figure 2 shows ConvMixer256/8 with a kernel size $k=5$ and patch size $p=2$ attaining a training accuracy of 100\% at approximately epoch 80, leaving little to no signal for further optimization. With increased use of data augmentation, variation between epochs provided enough room for a 3.7\% increase in validation accuracy (Figure 3). In contrast, variations in architecture as shown in Figure 4 resulted in a more modest increase of 2.5\% to 2.7\% for decreasing kernel size from $k=9$ to $k=5$ and decreasing patch size from $p=2$ to $p=1$, respectively.
+
+  \begin{figure}
+    \includegraphics[width=\linewidth]{val_k5p2.png}
+    \caption{Comparison of validation accuracy for ConvMixer256/8 (kernel size $k=5$, patch size$p=2$) at different augmentation levels.}
   \end{figure}
 
   \begin{figure}
-    \includegraphics[width=\linewidth]{val_lvl2.png}
-    \caption{Comparison of validation accuracy for ConvMixer256/8 with varying kernel and patch sizes at augmentation level 2.}
+    \includegraphics[width=\linewidth]{val_lvl0.png}
+    \caption{Comparison of validation accuracy for various ConvMixer256 models at augmentation level 0.}
   \end{figure}
 
-\todo{discuss experiment results}
+%   \begin{figure}[H]
+%     \includegraphics[width=\linewidth]{val_lvl2.png}
+%     \caption{Comparison of validation accuracy for ConvMixer256/8 models at augmentation level 2.}
+%   \end{figure}
+\subsection{Results}
 
-\section{Results}
-
-For our final results, we attempted to push the ConvMixer256/8(\verb|kernel_size=5, patch_size=2|) to 95\% accuracy. Our initial experiments indicated that a kernel size of 5 and patch size of 2 presented the best balance between model performance and training speed. We increased the number of training epochs and, to preempt the training saturation we observed previously, added CutMix regularization \citep{Yun2019} to the model, a method which had shown promise in shorter experiments we performed. Training for 200 epochs, the model achieved 95.0\% accuracy on the test data.
-
+For our final results, we attempted to push the ConvMixer256/8 to 95\% accuracy. Our initial experiments indicated that a kernel size $k=5$ and patch size $p=2$ presented the best balance between model performance and training speed. We doubled the number of training epochs and, to preempt the overfitting we observed previously, added CutMix regularization \citep{Yun2019} to the model, a method which had shown promise in shorter experiments we performed. Training for 200 epochs, the model achieved 95.0\% accuracy on the test data.
 
 For a final comparison, we also trained a similarly sized ResNet based on the architecture described by \citet{He2015} for use with CIFAR-10. Our implementation, which we name ResNet/S-38 to distinguish it from the typical ResNet architectures, has 561,370 parameters. We applied the same regularization and trained the model for 200 epochs. The model achieved 94.7\%, essentially on par with our final ConvMixer model. It also had a significantly higher training throughput: 0.12 seconds per sample vs 0.17 seconds per sample for the ConvMixer.
 
@@ -152,6 +158,10 @@ For a final comparison, we also trained a similarly sized ResNet based on the ar
     \includegraphics[width=\linewidth]{final_validation.png}
     \caption{Comparison of validation accuracy for ConvMixer256/8 (kernel size=5, patch size=2) and ResNet/S-38.}
   \end{figure}
+
+\section{Discussion}
+
+Our final ConvMixer model is able to achieve 95.0\% accuracy on the CIFAR-10 dataset using only 594,186 parameters, approximately 12\% of the 5 million budgeted. While the model is conceptually simpler than ResNet, it performs on par with a similarly sized ResNet/S-38 though at the cost of significantly decreased training throughput. Further work could be done to profile, identify performance bottlenecks and evaluate strategies to increase the throughput of ConvMixer without sacrificing its conceptual simplicity as well as a more thorough comparison between similarly sized ConvMixer and ResNets that incorporates seperate hyperparameter tuning for each architecture.   
 
 \appendix
 
