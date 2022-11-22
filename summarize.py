@@ -4,6 +4,8 @@ Quickly output model summary. Optional, save graph for viewing in TensorBoard.
 
 Typical usage:
     $python summarize.py --config=<model-config-file>
+
+TODO: Add support for saving ONXX models for viewing graph in Netron (https://github.com/lutzroeder/netron).
 """
 
 import argparse

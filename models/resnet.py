@@ -1,4 +1,4 @@
-"""Model definitions for ResNet, Wide ResNet and ResNeXt.
+"""Model definitions for ResNet, Wide ResNet and ResNeXt. See https://pytorch.org/vision/stable/_modules/torchvision/models/resnet.html.
 
 To make all models accessible to the training script, add the model identification and model definition to
 `model_registry` in `models/__init__.py`.
@@ -9,10 +9,6 @@ from typing import Union, Type, List
 import torch
 import torch.nn as nn
 from torch import Tensor
-
-"""
-    See https://pytorch.org/vision/stable/_modules/torchvision/models/resnet.html.
-"""
 
 
 def conv3x3(in_channels: int, out_channels: int, stride: int = 1, groups: int = 1, padding: int = 1) -> nn.Conv2d:
@@ -30,7 +26,7 @@ class ResBlock(nn.Module):
     def __init__(self, in_channels: int, out_channels: int, stride: int = 1, groups: int = 1, base_width: int = 64,
                  padding: int = 1):
         super().__init__()
-        self.conv1 = conv3x3(in_channels, out_channels, stride) # TODO: define directly rather than by function
+        self.conv1 = conv3x3(in_channels, out_channels, stride)  # TODO: define directly rather than by function
         self.bn1 = nn.BatchNorm2d(num_features=out_channels)
         self.relu = nn.ReLU(inplace=True)
         self.conv2 = conv3x3(out_channels, out_channels)
